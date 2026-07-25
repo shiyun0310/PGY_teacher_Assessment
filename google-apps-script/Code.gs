@@ -58,9 +58,10 @@ function handle(req) {
     case 'login':
       return { ok: PASSWORDS[req.role] === String(req.password) };
     case 'teacherLogin':
+      /* 座談記錄單僅供主任與部長調閱，不回傳給導師 */
       var t = findTeacher(req.staffId || req.name);
       return t
-        ? { ok: true, name: t.name, unit: t.unit, staffId: t.staffId, meetingLink: t.meetingLink }
+        ? { ok: true, name: t.name, unit: t.unit, staffId: t.staffId }
         : { ok: false };
     case 'getRecords':
       return { records: scopedRecords(req) };
@@ -75,13 +76,14 @@ function handle(req) {
   }
 }
 
-/* 依身分限定可讀取的資料：導師只拿得到自己那筆，主管須通過密碼驗證 */
+/* 依身分限定可讀取的資料：導師只拿得到自己那筆（且不含記錄單連結），
+   主管須通過密碼驗證，才能取得全部資料與座談記錄單連結 */
 function scopedRecords(req) {
   if (req.role === 'chief' || req.role === 'dean') {
     if (PASSWORDS[req.role] !== String(req.password)) throw new Error('密碼驗證失敗');
-    return getRecords(null);
+    return getRecords(null, true);
   }
-  if (req.role === 'teacher' && req.name) return getRecords(String(req.name).trim());
+  if (req.role === 'teacher' && req.name) return getRecords(String(req.name).trim(), false);
   return [];
 }
 
@@ -186,11 +188,12 @@ function fillMeetingLinks() {
     '，查無檔案：' + (missing.length ? missing.join('、') : '無'));
 }
 
-/* ── 讀取評核紀錄，轉為前端使用的資料格式（onlyName 不為空時僅回傳該導師）── */
-function getRecords(onlyName) {
+/* ── 讀取評核紀錄，轉為前端使用的資料格式
+   onlyName 不為空時僅回傳該導師；withLinks 為 false 時不附座談記錄單連結 ── */
+function getRecords(onlyName, withLinks) {
   var sh = getSheet(REC_SHEET, REC_LABELS);
   var rows = sh.getDataRange().getValues().slice(1);
-  var links = meetingLinkMap();
+  var links = withLinks ? meetingLinkMap() : {};
   var records = [];
   for (var i = 0; i < rows.length; i++) {
     var o = {};

@@ -369,7 +369,6 @@ function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
 let currentRole = null;
 let currentTeacher = null;
 let currentUnit = null;
-let currentMeetingLink = '';
 const app = document.getElementById('app');
 
 function setBusy(on) { document.getElementById('busy').style.display = on ? 'flex' : 'none'; }
@@ -419,13 +418,13 @@ function setRole(role) {
   }
 }
 function logout() {
-  currentTeacher = null; currentUnit = null; currentMeetingLink = ''; currentPassword = '';
+  currentTeacher = null; currentUnit = null; currentPassword = '';
   RECORDS = [];
   setRole(null);
   renderRoleSelect();
 }
 
-/* 導師座談記錄單（三種身分皆可點閱，導師僅能看到自己的） */
+/* 導師座談記錄單（僅一般科主任與教學部部長可調閱，導師端不顯示） */
 function docStrip(link) {
   const safe = /^https?:\/\//i.test(link || '') ? link : '';
   return `
@@ -497,12 +496,10 @@ async function teacherLogin() {
       if (!r.ok) return toastErr('查無此人事號，請確認輸入是否正確或洽教學部');
       currentTeacher = r.name || key;
       currentUnit = r.unit;
-      currentMeetingLink = r.meetingLink || '';
     } else {
       if (!(key in TEACHERS)) return toastErr('查無此人事號，請確認輸入是否正確或洽教學部');
       currentTeacher = key;
       currentUnit = TEACHERS[key];
-      currentMeetingLink = '';
     }
     setRole('teacher');
     await refreshRecords();
@@ -575,7 +572,6 @@ async function renderTeacherHome() {
   app.innerHTML = `
     <div class="card">
       <h2>${icon('clipboard', 18)}我的評核表（${PERIOD}）</h2>
-      ${docStrip(currentMeetingLink)}
       ${list.length ? `
         <table class="list-table">
           <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th>送出日期</th><th></th></tr>
@@ -604,7 +600,6 @@ function renderTeacherForm() {
         <div><b>單位：</b>${esc(unit)}</div>
         <div><b>日期：</b>${todayStr()}</div>
       </div>
-      ${docStrip(currentMeetingLink)}
       <div class="section-label">評量內容（自評）</div>
       <table class="score-table">
         <tr><th style="width:56%">評量內容</th><th>配分</th><th>自評得分</th></tr>
@@ -843,7 +838,7 @@ function renderDetail(id) {
         <div>目前狀態：${statusTag(r.status)}</div>
         <button class="btn btn-primary" onclick="window.print()">${icon('printer', 16)} 列印 / 另存 PDF</button>
       </div>
-      ${docStrip(r.meetingLink)}
+      ${currentRole === 'teacher' ? '' : docStrip(r.meetingLink)}
     </div>
     <div class="print-sheet">
       <div class="hosp">
