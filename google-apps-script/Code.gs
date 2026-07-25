@@ -13,12 +13,22 @@ var SIGNERS   = { chief: '郭妍伶', dean: '蘇慧真' };
 
 var TEACHER_SHEET = 'teachers';
 var REC_SHEET = 'assessments';
+/* 程式內部使用的欄位鍵值（依「欄位位置」對應，工作表第 1 列標題可自由改名） */
 var REC_HEADERS = [
   'id', 'period', 'name', 'unit',
   'self1', 'self2', 'self3', 'self4', 'self_total',
   'chief1', 'chief2', 'chief3', 'chief4', 'chief_total', 'chief_feedback', 'satisfaction',
   'dean1', 'dean2', 'dean3', 'dean4', 'dean_total', 'dean_feedback',
   'status', 'teacher_signed_at', 'chief_signed_at', 'dean_signed_at',
+];
+/* 自動建立工作表時顯示的中文標題（僅供閱讀，順序需與 REC_HEADERS 一致） */
+var TEACHER_LABELS = ['姓名', '單位', '停用請填N'];
+var REC_LABELS = [
+  '編號', '期別', '姓名', '單位',
+  '自評1', '自評2', '自評3', '自評4', '自評總分',
+  '主任評分1', '主任評分2', '主任評分3', '主任評分4', '主任總分', '主任回饋', '滿意度',
+  '部長評分1', '部長評分2', '部長評分3', '部長評分4', '部長總分', '部長回饋',
+  '狀態', '導師簽核日', '主任簽核日', '部長簽核日',
 ];
 
 function doGet() {
@@ -71,12 +81,12 @@ function getSheet(name, headers) {
 }
 
 function ensureSheets() {
-  getSheet(TEACHER_SHEET, ['name', 'unit', 'active']);
-  getSheet(REC_SHEET, REC_HEADERS);
+  getSheet(TEACHER_SHEET, TEACHER_LABELS);
+  getSheet(REC_SHEET, REC_LABELS);
 }
 
 function findTeacher(name) {
-  var sh = getSheet(TEACHER_SHEET, ['name', 'unit', 'active']);
+  var sh = getSheet(TEACHER_SHEET, TEACHER_LABELS);
   var rows = sh.getDataRange().getValues().slice(1);
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
