@@ -28,7 +28,9 @@ var REC_HEADERS = [
   'status', 'teacher_signed_at', 'chief_signed_at', 'dean_signed_at',
 ];
 /* 自動建立工作表時顯示的中文標題（僅供閱讀，順序需與 REC_HEADERS 一致） */
-var TEACHER_LABELS = ['姓名', '單位', '停用請填N', '座談記錄單連結'];
+var TEACHER_LABELS = ['姓名', '單位', '停用請填N', '人事號', '座談記錄單連結'];
+/* teachers 工作表欄位位置（0 起算） */
+var T_NAME = 0, T_UNIT = 1, T_ACTIVE = 2, T_STAFF = 3, T_LINK = 4;
 var REC_LABELS = [
   '編號', '期別', '姓名', '單位',
   '自評1', '自評2', '自評3', '自評4', '自評總分',
@@ -56,8 +58,10 @@ function handle(req) {
     case 'login':
       return { ok: PASSWORDS[req.role] === String(req.password) };
     case 'teacherLogin':
-      var t = findTeacher(req.name);
-      return t ? { ok: true, unit: t.unit, meetingLink: t.meetingLink } : { ok: false };
+      var t = findTeacher(req.staffId || req.name);
+      return t
+        ? { ok: true, name: t.name, unit: t.unit, staffId: t.staffId, meetingLink: t.meetingLink }
+        : { ok: false };
     case 'getRecords':
       return { records: scopedRecords(req) };
     case 'saveRecord':
@@ -112,21 +116,26 @@ function ensureSheets() {
   getSheet(REC_SHEET, REC_LABELS);
 }
 
-function findTeacher(name) {
+/* 以人事號查詢導師（找不到時亦接受輸入姓名，方便人事號尚未建檔時使用） */
+function findTeacher(key) {
   var sh = getSheet(TEACHER_SHEET, TEACHER_LABELS);
   var rows = sh.getDataRange().getValues().slice(1);
+  var k = String(key).trim();
+  if (!k) return null;
+  var byName = null;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
-    if (String(r[0]).trim() === String(name).trim() &&
-        String(r[2]).trim().toUpperCase() !== 'N') {
-      return {
-        name: String(r[0]).trim(),
-        unit: String(r[1]).trim(),
-        meetingLink: String(r[3] || '').trim(),
-      };
-    }
+    if (String(r[T_ACTIVE]).trim().toUpperCase() === 'N') continue;
+    var hit = {
+      name: String(r[T_NAME]).trim(),
+      unit: String(r[T_UNIT]).trim(),
+      staffId: String(r[T_STAFF] || '').trim(),
+      meetingLink: String(r[T_LINK] || '').trim(),
+    };
+    if (hit.staffId && hit.staffId.toUpperCase() === k.toUpperCase()) return hit;
+    if (!byName && hit.name === k) byName = hit;
   }
-  return null;
+  return byName;
 }
 
 /* 姓名 → 座談記錄單連結 對照表 */
@@ -135,8 +144,8 @@ function meetingLinkMap() {
   var rows = sh.getDataRange().getValues().slice(1);
   var map = {};
   for (var i = 0; i < rows.length; i++) {
-    var n = String(rows[i][0]).trim();
-    if (n) map[n] = String(rows[i][3] || '').trim();
+    var n = String(rows[i][T_NAME]).trim();
+    if (n) map[n] = String(rows[i][T_LINK] || '').trim();
   }
   return map;
 }
@@ -156,7 +165,7 @@ function fillMeetingLinks() {
     files.push({ name: f.getName(), url: f.getUrl() });
   }
 
-  var names = sh.getRange(2, 1, last - 1, 1).getValues();
+  var names = sh.getRange(2, T_NAME + 1, last - 1, 1).getValues();
   var out = [], matched = 0, missing = [];
   for (var i = 0; i < names.length; i++) {
     var n = String(names[i][0]).trim();
@@ -168,7 +177,7 @@ function fillMeetingLinks() {
     out.push([hit]);
     if (hit) matched++; else missing.push(n);
   }
-  sh.getRange(2, 4, out.length, 1).setValues(out);
+  sh.getRange(2, T_LINK + 1, out.length, 1).setValues(out);
   Logger.log('資料夾檔案數：' + files.length + '，成功對應：' + matched +
     '，查無檔案：' + (missing.length ? missing.join('、') : '無'));
 }

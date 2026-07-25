@@ -448,7 +448,7 @@ function renderRoleSelect() {
         <div class="role-card" onclick="enter('teacher')">
           <div class="icon">${icon('person', 42)}</div>
           <h3>導師</h3>
-          <p>輸入姓名即自動帶出單位並進入自評表，送出後系統自動代簽。</p>
+          <p>輸入人事號即自動帶出您的資料並進入自評表，送出後系統自動代簽。</p>
         </div>
         <div class="role-card rc-chief" onclick="enter('chief')">
           <div class="icon">${icon('stethoscope', 42)}</div>
@@ -469,15 +469,15 @@ function enter(role) {
   else renderPasswordGate(role);
 }
 
-/* ═══════════════ 導師：姓名登入 ═══════════════ */
+/* ═══════════════ 導師：人事號登入 ═══════════════ */
 function renderTeacherLogin() {
   app.innerHTML = `
     <span class="back-link" onclick="renderRoleSelect()">← 返回身分選擇</span>
     <div class="card" style="max-width:460px;margin:30px auto">
       <h2>${icon('person', 18)}導師登入</h2>
       <div class="form-group" style="margin-bottom:16px">
-        <label>請輸入您的姓名 <span class="req">*</span></label>
-        <input type="text" id="loginName" placeholder="輸入姓名後將自動帶出您的單位"
+        <label>請輸入您的人事號 <span class="req">*</span></label>
+        <input type="text" id="loginName" placeholder="輸入人事號後將自動帶出您的資料"
                onkeydown="if(event.key==='Enter')teacherLogin()">
       </div>
       <div class="actions-bar" style="justify-content:center">
@@ -488,24 +488,25 @@ function renderTeacherLogin() {
 }
 
 async function teacherLogin() {
-  const name = document.getElementById('loginName').value.trim();
-  if (!name) return toastErr('請輸入姓名');
+  const key = document.getElementById('loginName').value.trim();
+  if (!key) return toastErr('請輸入人事號');
   setBusy(true);
   try {
     if (USE_API) {
-      const r = await api({ action: 'teacherLogin', name });
-      if (!r.ok) return toastErr('名單中查無此姓名，請確認輸入是否正確或洽教學部');
+      const r = await api({ action: 'teacherLogin', staffId: key, name: key });
+      if (!r.ok) return toastErr('查無此人事號，請確認輸入是否正確或洽教學部');
+      currentTeacher = r.name || key;
       currentUnit = r.unit;
       currentMeetingLink = r.meetingLink || '';
     } else {
-      if (!(name in TEACHERS)) return toastErr('名單中查無此姓名，請確認輸入是否正確或洽教學部');
-      currentUnit = TEACHERS[name];
+      if (!(key in TEACHERS)) return toastErr('查無此人事號，請確認輸入是否正確或洽教學部');
+      currentTeacher = key;
+      currentUnit = TEACHERS[key];
       currentMeetingLink = '';
     }
-    currentTeacher = name;
     setRole('teacher');
     await refreshRecords();
-    const mine = RECORDS.filter(r => r.name === name && r.period === PERIOD);
+    const mine = RECORDS.filter(r => r.name === currentTeacher && r.period === PERIOD);
     if (mine.length) renderTeacherHome();
     else renderTeacherForm();
   } catch (e) {
