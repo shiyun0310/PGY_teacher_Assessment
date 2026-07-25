@@ -252,8 +252,28 @@ async function api(payload) {
 
 function loadLocal() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
 
+/* 試算表會把日期轉成日期物件，讀回時統一整理成 yyyy-mm-dd 字串 */
+function normDate(v) {
+  if (!v || typeof v !== 'string') return v;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  if (isNaN(d)) return v;
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+function normalizeRecord(r) {
+  r.submittedAt = normDate(r.submittedAt);
+  ['teacher', 'chief', 'dean'].forEach(k => {
+    if (r.sigs && r.sigs[k]) r.sigs[k].date = normDate(r.sigs[k].date);
+  });
+  return r;
+}
+
 async function refreshRecords() {
-  RECORDS = USE_API ? (await api({ action: 'getRecords' })).records : loadLocal();
+  RECORDS = USE_API
+    ? (await api({ action: 'getRecords' })).records.map(normalizeRecord)
+    : loadLocal();
   return RECORDS;
 }
 
@@ -262,7 +282,7 @@ function getRec(id) { return RECORDS.find(r => r.id === id); }
 
 async function persist(rec) {
   if (USE_API) {
-    RECORDS = (await api({ action: 'saveRecord', record: rec })).records;
+    RECORDS = (await api({ action: 'saveRecord', record: rec })).records.map(normalizeRecord);
   } else {
     const list = loadLocal();
     const i = list.findIndex(r => r.id === rec.id);

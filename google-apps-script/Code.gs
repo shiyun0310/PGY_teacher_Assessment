@@ -164,7 +164,7 @@ function nv(v) { return (v === null || v === undefined) ? '' : v; }
 function numOrNull(v) { return (v === '' || v === null || v === undefined) ? null : Number(v); }
 
 function fmtDate(v) {
-  if (v instanceof Date) {
+  if (v && typeof v.getTime === 'function') {
     return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
   return (v === '' || v === null || v === undefined) ? null : String(v);
