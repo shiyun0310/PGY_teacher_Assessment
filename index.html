@@ -115,13 +115,8 @@
     background: var(--primary-light); border: 1px solid rgba(0,0,0,.05);
     border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; font-size: 14.5px;
   }
-  .doc-strip .label { font-weight: 700; color: var(--primary-dark); margin-right: auto; }
+  .doc-strip .label { font-weight: 700; color: var(--primary-dark); }
   .doc-strip .none { color: var(--muted); }
-  .doc-frame {
-    margin: -8px 0 18px; border: 1px solid var(--border); border-radius: 12px;
-    overflow: hidden; background: #f7f8fa;
-  }
-  .doc-frame iframe { width: 100%; height: 640px; border: 0; display: block; }
 
   /* ── 表單 ── */
   .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -430,49 +425,16 @@ function logout() {
   renderRoleSelect();
 }
 
-/* 把雲端硬碟的檢視網址轉成可內嵌的預覽網址 */
-function embedUrl(link) {
-  const file = /drive\.google\.com\/file\/d\/([^/?#]+)/.exec(link);
-  if (file) return `https://drive.google.com/file/d/${file[1]}/preview`;
-  const doc = /docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([^/?#]+)/.exec(link);
-  if (doc) return `https://docs.google.com/${doc[1]}/d/${doc[2]}/preview`;
-  return link;
-}
-
 /* 導師座談記錄單（三種身分皆可點閱，導師僅能看到自己的） */
-let docSeq = 0;
 function docStrip(link) {
   const safe = /^https?:\/\//i.test(link || '') ? link : '';
-  if (!safe) {
-    return `
-      <div class="doc-strip no-print">
-        <span class="label">${icon('doc', 17)}${PERIOD} 導師座談記錄單</span>
-        <span class="none">（尚未上傳，請洽教學部）</span>
-      </div>`;
-  }
-  const id = 'docFrame' + (++docSeq);
   return `
     <div class="doc-strip no-print">
       <span class="label">${icon('doc', 17)}${PERIOD} 導師座談記錄單</span>
-      <button class="btn btn-outline btn-sm" onclick="toggleDoc('${id}', this)">展開閱讀</button>
-      <a class="btn btn-outline btn-sm" href="${esc(safe)}" target="_blank" rel="noopener">另開新分頁</a>
-    </div>
-    <div class="doc-frame no-print" id="${id}" style="display:none"
-         data-src="${esc(embedUrl(safe))}"></div>`;
-}
-
-function toggleDoc(id, btn) {
-  const box = document.getElementById(id);
-  if (!box) return;
-  const opening = box.style.display === 'none';
-  if (opening && !box.firstChild) {
-    const f = document.createElement('iframe');
-    f.src = box.dataset.src;
-    f.loading = 'lazy';
-    box.appendChild(f);
-  }
-  box.style.display = opening ? 'block' : 'none';
-  btn.textContent = opening ? '收合記錄單' : '展開閱讀';
+      ${safe
+        ? `<a class="btn btn-outline btn-sm" href="${esc(safe)}" target="_blank" rel="noopener">開啟記錄單</a>`
+        : `<span class="none">（尚未上傳，請洽教學部）</span>`}
+    </div>`;
 }
 
 /* ═══════════════ 角色選擇 ═══════════════ */
