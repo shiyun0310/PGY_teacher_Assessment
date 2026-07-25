@@ -514,12 +514,14 @@ function renderReviewForm(id, role) {
       <div class="score-note">※ 各項得分不得超過配分上限。</div>
       ${isChief ? '' : `
         <div class="section-label">一般科主任回饋</div>
-        <div class="feedback-box">${esc(r.chiefFeedback) || '（無）'}</div>`}
+        <div class="feedback-box">${esc(r.chiefFeedback) || '（無）'}</div>
+        <div class="section-label">學員對導師滿意度（一般科主任填寫）</div>
+        <div class="feedback-box">${r.satisfaction ? r.satisfaction + ' 分' : '（無）'}</div>`}
       <div class="section-label">${ROLE_LABEL[role]}回饋 <span class="req">*</span></div>
       <div class="form-group">
         <textarea id="revFeedback" placeholder="請填寫對導師之回饋建議"></textarea>
       </div>
-      ${isChief ? '' : `
+      ${!isChief ? '' : `
         <div class="form-row" style="margin-top:14px">
           <div class="form-group">
             <label>學員對導師滿意度（1－5 分） <span class="req">*</span></label>
@@ -560,20 +562,20 @@ function submitReview(id, role) {
   if (scores.some(s => s === '')) return toast('⚠️ 請完成所有評分項目');
   if (!feedback) return toast('⚠️ 請填寫回饋');
   if (role === 'chief') {
+    const sat = document.getElementById('satisfaction').value;
+    if (!sat) return toast('⚠️ 請選擇學員對導師滿意度');
     r.chiefScores = scores.map(Number);
     r.chiefTotal = sum(scores);
     r.chiefFeedback = feedback;
+    r.satisfaction = Number(sat);
     r.sigs.chief = { name: sig, date };
     r.status = 'pending_dean';
     upsert(r);
     toast('✅ 已完成主任評核，送交教學部部長');
   } else {
-    const sat = document.getElementById('satisfaction').value;
-    if (!sat) return toast('⚠️ 請選擇學員對導師滿意度');
     r.deanScores = scores.map(Number);
     r.deanTotal = sum(scores);
     r.deanFeedback = feedback;
-    r.satisfaction = Number(sat);
     r.sigs.dean = { name: sig, date };
     r.status = 'completed';
     upsert(r);
