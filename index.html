@@ -61,8 +61,9 @@
     width: 270px; padding: 34px 24px 28px; cursor: pointer; transition: all .18s;
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
   }
+  .role-card.rc-teacher { --rc: #b8860b; }
   .role-card.rc-chief { --rc: var(--blue); }
-  .role-card.rc-dean { --rc: #9a6b1f; }
+  .role-card.rc-dean { --rc: var(--green); }
   .role-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.16); border-color: var(--rc); }
   .role-card .icon { margin-bottom: 14px; }
   .role-card .icon .svg-icon { color: var(--rc); }
@@ -365,7 +366,7 @@ function renderRoleSelect() {
       <h2>請選擇您的身分</h2>
       <p class="hint">依身分進入對應的評核流程：導師自評 → 一般科主任評核 → 教學部部長評核</p>
       <div class="role-cards">
-        <div class="role-card" onclick="enter('teacher')">
+        <div class="role-card rc-teacher" onclick="enter('teacher')">
           <div class="icon">${icon('person', 42)}</div>
           <h3>導師</h3>
           <p>輸入姓名即自動帶出單位並進入自評表，送出後系統自動代簽。</p>
