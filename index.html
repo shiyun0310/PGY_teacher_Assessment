@@ -20,6 +20,10 @@
     --blue: #2b5f8a;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* 依身分切換整體配色（點選身分卡後套用） */
+  body.theme-teacher { --primary: #a0730a; --primary-dark: #7d5a08; --primary-light: #f6efdc; }
+  body.theme-chief   { --primary: #2b5f8a; --primary-dark: #204a6d; --primary-light: #e7eef5; }
+  body.theme-dean    { --primary: #2e7d54; --primary-dark: #226141; --primary-light: #e6f3ec; }
   body {
     font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
     background: var(--bg); color: var(--text); min-height: 100vh;
@@ -348,8 +352,11 @@ function esc(s) {
 }
 function statusTag(st) { return `<span class="status-tag st-${st}">${STATUS_LABEL[st]}</span>`; }
 
+function setTheme(role) { document.body.className = role ? 'theme-' + role : ''; }
+
 function setRole(role) {
   currentRole = role;
+  setTheme(role);
   const badge = document.getElementById('roleBadge');
   badge.style.display = role ? 'flex' : 'none';
   if (role) {
@@ -361,6 +368,7 @@ function logout() { currentTeacher = null; currentUnit = null; setRole(null); re
 
 /* ═══════════════ 角色選擇 ═══════════════ */
 function renderRoleSelect() {
+  setTheme(null);
   app.innerHTML = `
     <div class="role-select">
       <h2>請選擇您的身分</h2>
@@ -385,6 +393,7 @@ function renderRoleSelect() {
     </div>`;
 }
 function enter(role) {
+  setTheme(role);
   if (role === 'teacher') renderTeacherLogin();
   else renderPasswordGate(role);
 }
