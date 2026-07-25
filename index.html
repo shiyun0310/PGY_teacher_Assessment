@@ -55,13 +55,18 @@
   .role-select p.hint { color: var(--muted); font-size: 14px; margin-bottom: 30px; }
   .role-cards { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
   .role-card {
+    --rc: var(--primary);
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    border-top: 4px solid var(--rc);
     width: 270px; padding: 34px 24px 28px; cursor: pointer; transition: all .18s;
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
   }
-  .role-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(142,59,70,.18); border-color: var(--primary); }
-  .role-card .icon { font-size: 42px; margin-bottom: 14px; }
-  .role-card h3 { font-size: 18px; color: var(--primary-dark); margin-bottom: 8px; }
+  .role-card.rc-chief { --rc: var(--blue); }
+  .role-card.rc-dean { --rc: #9a6b1f; }
+  .role-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.16); border-color: var(--rc); }
+  .role-card .icon { margin-bottom: 14px; }
+  .role-card .icon .svg-icon { color: var(--rc); }
+  .role-card h3 { font-size: 18px; color: var(--rc); margin-bottom: 8px; }
   .role-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
   /* ── 通用卡片 / 按鈕 ── */
@@ -365,12 +370,12 @@ function renderRoleSelect() {
           <h3>導師</h3>
           <p>輸入姓名即自動帶出單位並進入自評表，送出後系統自動代簽。</p>
         </div>
-        <div class="role-card" onclick="enter('chief')">
+        <div class="role-card rc-chief" onclick="enter('chief')">
           <div class="icon">${icon('stethoscope', 42)}</div>
           <h3>一般科主任</h3>
           <p>輸入密碼登入後，可檢視所有導師自評並逐一評分回饋，送交教學部部長。</p>
         </div>
-        <div class="role-card" onclick="enter('dean')">
+        <div class="role-card rc-dean" onclick="enter('dean')">
           <div class="icon">${icon('building', 42)}</div>
           <h3>教學部部長</h3>
           <p>輸入密碼登入後，完成最終評分、回饋與學員滿意度登錄並結案。</p>
