@@ -490,7 +490,7 @@ function renderReviewForm(id, role) {
   app.innerHTML = `
     <span class="back-link" onclick="renderReviewList('${role}')">← 返回待辦清單</span>
     <div class="card">
-      <h2>評核作業 — ${colLabel}</h2>
+      <h2>${ROLE_LABEL[role]}評核</h2>
       <div class="info-strip">
         <div><b>期別：</b>${PERIOD}</div>
         <div><b>導師：</b>${esc(r.name)}</div>
