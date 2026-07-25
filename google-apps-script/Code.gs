@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 一般醫學長期導師評核平台 — Google Sheets 後端（Google Apps Script）
  * 部署步驟請見專案 README.md 的「Google Sheets 資料庫設定」章節。
  *
@@ -100,7 +100,7 @@ function findTeacher(name) {
 
 /* ── 讀取所有評核紀錄，轉為前端使用的資料格式 ── */
 function getRecords() {
-  var sh = getSheet(REC_SHEET, REC_HEADERS);
+  var sh = getSheet(REC_SHEET, REC_LABELS);
   var rows = sh.getDataRange().getValues().slice(1);
   var records = [];
   for (var i = 0; i < rows.length; i++) {
@@ -139,7 +139,7 @@ function getRecords() {
 
 /* ── 新增或更新一筆評核紀錄（依 id 比對）── */
 function saveRecord(rec) {
-  var sh = getSheet(REC_SHEET, REC_HEADERS);
+  var sh = getSheet(REC_SHEET, REC_LABELS);
   var row = [
     rec.id, rec.period, rec.name, rec.unit,
     rec.selfScores[0], rec.selfScores[1], rec.selfScores[2], rec.selfScores[3], rec.selfTotal,
