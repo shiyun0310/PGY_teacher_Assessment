@@ -150,6 +150,11 @@
     background: var(--green); color: #fff; padding: 12px 28px; border-radius: 8px;
     font-size: 15px; box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 99; display: none;
   }
+  .busy-overlay {
+    position: fixed; inset: 0; background: rgba(255,255,255,.65); z-index: 98;
+    display: none; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: var(--primary-dark);
+  }
   .actions-bar { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
   .back-link { color: var(--primary); cursor: pointer; font-size: 14px; margin-bottom: 14px; display: inline-block; }
   .back-link:hover { text-decoration: underline; }
@@ -190,9 +195,17 @@
 
 <main id="app"></main>
 <div class="toast" id="toast"></div>
+<div class="busy-overlay" id="busy">⏳ 處理中，請稍候…</div>
 
 <script>
 /* ═══════════════ 資料層 ═══════════════ */
+/* ── Google Sheets 後端設定 ──
+   依 README「Google Sheets 資料庫設定」部署 Apps Script 後，
+   將取得的網址（https://script.google.com/macros/s/…/exec）貼到 API_URL。
+   留空則使用瀏覽器 localStorage 單機測試模式。 */
+const API_URL = '';
+const USE_API = /^https:/.test(API_URL);
+
 const STORE_KEY = 'pgy_mentor_assessments_v1';
 const PERIOD = '115年1 ~ 6月';
 const ITEMS = [
@@ -208,7 +221,7 @@ const STATUS_LABEL = {
 };
 const ROLE_LABEL = { teacher: '導師', chief: '一般科主任', dean: '教學部部長' };
 
-/* ── 導師名單資料庫：請在此維護「姓名: 單位」，導師輸入姓名後將自動帶出單位 ── */
+/* ── 導師名單（僅單機測試模式使用；Google Sheets 模式改由 teachers 工作表維護）── */
 const TEACHERS = {
   '王小明': '一般內科',
   '林美慧': '家庭醫學科',
@@ -217,20 +230,46 @@ const TEACHERS = {
   '李國強': '急診醫學科',
 };
 
-/* ── 主管密碼 ── */
+/* ── 主管密碼（僅單機測試模式使用；Google Sheets 模式由 Apps Script 驗證）── */
 const ROLE_PASSWORDS = { chief: '940963', dean: '010101' };
 
 /* ── 主管簽名（送出時自動帶入，日期為當天）── */
 const ROLE_SIGNERS = { chief: '郭妍伶', dean: '蘇慧真' };
 
-function loadAll()  { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
-function saveAll(l) { localStorage.setItem(STORE_KEY, JSON.stringify(l)); }
-function getRec(id) { return loadAll().find(r => r.id === id); }
-function upsert(rec) {
-  const list = loadAll();
-  const i = list.findIndex(r => r.id === rec.id);
-  if (i >= 0) list[i] = rec; else list.push(rec);
-  saveAll(list);
+let RECORDS = [];
+
+async function api(payload) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+function loadLocal() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
+
+async function refreshRecords() {
+  RECORDS = USE_API ? (await api({ action: 'getRecords' })).records : loadLocal();
+  return RECORDS;
+}
+
+function loadAll() { return RECORDS; }
+function getRec(id) { return RECORDS.find(r => r.id === id); }
+
+async function persist(rec) {
+  if (USE_API) {
+    RECORDS = (await api({ action: 'saveRecord', record: rec })).records;
+  } else {
+    const list = loadLocal();
+    const i = list.findIndex(r => r.id === rec.id);
+    if (i >= 0) list[i] = rec; else list.push(rec);
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+    RECORDS = list;
+  }
 }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
@@ -238,7 +277,10 @@ function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
 /* ═══════════════ 共用 UI ═══════════════ */
 let currentRole = null;
 let currentTeacher = null;
+let currentUnit = null;
 const app = document.getElementById('app');
+
+function setBusy(on) { document.getElementById('busy').style.display = on ? 'flex' : 'none'; }
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -260,7 +302,7 @@ function setRole(role) {
     document.getElementById('roleBadgeText').textContent = '目前身分：' + who;
   }
 }
-function logout() { currentTeacher = null; setRole(null); renderRoleSelect(); }
+function logout() { currentTeacher = null; currentUnit = null; setRole(null); renderRoleSelect(); }
 
 /* ═══════════════ 角色選擇 ═══════════════ */
 function renderRoleSelect() {
@@ -310,15 +352,30 @@ function renderTeacherLogin() {
   document.getElementById('loginName').focus();
 }
 
-function teacherLogin() {
+async function teacherLogin() {
   const name = document.getElementById('loginName').value.trim();
   if (!name) return toast('⚠️ 請輸入姓名');
-  if (!(name in TEACHERS)) return toast('⚠️ 名單中查無此姓名，請確認輸入是否正確或洽教學部');
-  currentTeacher = name;
-  setRole('teacher');
-  const mine = loadAll().filter(r => r.name === name && r.period === PERIOD);
-  if (mine.length) renderTeacherHome();
-  else renderTeacherForm();
+  setBusy(true);
+  try {
+    if (USE_API) {
+      const r = await api({ action: 'teacherLogin', name });
+      if (!r.ok) return toast('⚠️ 名單中查無此姓名，請確認輸入是否正確或洽教學部');
+      currentUnit = r.unit;
+    } else {
+      if (!(name in TEACHERS)) return toast('⚠️ 名單中查無此姓名，請確認輸入是否正確或洽教學部');
+      currentUnit = TEACHERS[name];
+    }
+    currentTeacher = name;
+    setRole('teacher');
+    await refreshRecords();
+    const mine = RECORDS.filter(r => r.name === name && r.period === PERIOD);
+    if (mine.length) renderTeacherHome();
+    else renderTeacherForm();
+  } catch (e) {
+    toast('⚠️ 連線失敗，請稍後再試（' + e.message + '）');
+  } finally {
+    setBusy(false);
+  }
 }
 
 /* ═══════════════ 主任 / 部長：密碼登入 ═══════════════ */
@@ -339,15 +396,33 @@ function renderPasswordGate(role) {
   document.getElementById('gatePwd').focus();
 }
 
-function checkGate(role) {
+async function checkGate(role) {
   const pwd = document.getElementById('gatePwd').value;
-  if (pwd !== ROLE_PASSWORDS[role]) return toast('⚠️ 密碼錯誤，請重新輸入');
-  setRole(role);
-  renderReviewList(role);
+  setBusy(true);
+  try {
+    if (USE_API) {
+      const r = await api({ action: 'login', role, password: pwd });
+      if (!r.ok) return toast('⚠️ 密碼錯誤，請重新輸入');
+    } else {
+      if (pwd !== ROLE_PASSWORDS[role]) return toast('⚠️ 密碼錯誤，請重新輸入');
+    }
+    setRole(role);
+    await renderReviewList(role);
+  } catch (e) {
+    toast('⚠️ 連線失敗，請稍後再試（' + e.message + '）');
+  } finally {
+    setBusy(false);
+  }
 }
 
 /* ═══════════════ 導師端 ═══════════════ */
-function renderTeacherHome() {
+async function renderTeacherHome() {
+  if (USE_API) {
+    setBusy(true);
+    try { await refreshRecords(); }
+    catch (e) { toast('⚠️ 讀取資料失敗（' + e.message + '）'); }
+    finally { setBusy(false); }
+  }
   const list = loadAll().filter(r => r.name === currentTeacher);
   const rows = list.map(r => `
     <tr>
@@ -372,7 +447,7 @@ function renderTeacherHome() {
 
 function renderTeacherForm() {
   const name = currentTeacher;
-  const unit = TEACHERS[name] || '';
+  const unit = currentUnit || '';
   const itemRows = ITEMS.map((it, i) => `
     <tr>
       <td class="item-name">${esc(it.text)}</td>
@@ -415,9 +490,9 @@ function updateSelfTotal() {
   document.getElementById('selfTotalCell').textContent = sum(scores);
 }
 
-function submitTeacherForm() {
+async function submitTeacherForm() {
   const name = currentTeacher;
-  const unit = TEACHERS[name] || '';
+  const unit = currentUnit || '';
   const scores = ITEMS.map((_, i) => document.getElementById('self_' + i).value);
   if (scores.some(s => s === '')) return toast('⚠️ 請完成所有自評項目');
   const rec = {
@@ -431,13 +506,26 @@ function submitTeacherForm() {
     status: 'pending_chief',
     submittedAt: todayStr(),
   };
-  upsert(rec);
-  toast('✅ 已送出，將由一般科主任進行評核');
-  renderTeacherHome();
+  setBusy(true);
+  try {
+    await persist(rec);
+    toast('✅ 已送出，將由一般科主任進行評核');
+    renderTeacherHome();
+  } catch (e) {
+    toast('⚠️ 送出失敗，請稍後再試（' + e.message + '）');
+  } finally {
+    setBusy(false);
+  }
 }
 
 /* ═══════════════ 主任 / 部長：待辦清單 ═══════════════ */
-function renderReviewList(role) {
+async function renderReviewList(role) {
+  if (USE_API) {
+    setBusy(true);
+    try { await refreshRecords(); }
+    catch (e) { toast('⚠️ 讀取資料失敗（' + e.message + '）'); }
+    finally { setBusy(false); }
+  }
   const pendingStatus = role === 'chief' ? 'pending_chief' : 'pending_dean';
   const list = loadAll();
   const pending = list.filter(r => r.status === pendingStatus);
@@ -553,7 +641,7 @@ function updateRevTotal() {
   document.getElementById('revTotalCell').textContent = sum(scores);
 }
 
-function submitReview(id, role) {
+async function submitReview(id, role) {
   const r = getRec(id);
   if (!r) return;
   const scores = ITEMS.map((_, i) => document.getElementById('rev_' + i).value);
@@ -571,18 +659,23 @@ function submitReview(id, role) {
     r.satisfaction = Number(sat);
     r.sigs.chief = { name: sig, date };
     r.status = 'pending_dean';
-    upsert(r);
-    toast('✅ 已完成主任評核，送交教學部部長');
   } else {
     r.deanScores = scores.map(Number);
     r.deanTotal = sum(scores);
     r.deanFeedback = feedback;
     r.sigs.dean = { name: sig, date };
     r.status = 'completed';
-    upsert(r);
-    toast('✅ 評核流程已全部完成');
   }
-  renderReviewList(role);
+  setBusy(true);
+  try {
+    await persist(r);
+    toast(role === 'chief' ? '✅ 已完成主任評核，送交教學部部長' : '✅ 評核流程已全部完成');
+    renderReviewList(role);
+  } catch (e) {
+    toast('⚠️ 儲存失敗，請稍後再試（' + e.message + '）');
+  } finally {
+    setBusy(false);
+  }
 }
 
 /* ═══════════════ 檢視 / 列印完整表單 ═══════════════ */
