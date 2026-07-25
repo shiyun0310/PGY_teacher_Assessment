@@ -10,14 +10,10 @@
     --primary-dark: #6e2c35;
     --primary-light: #f7edee;
     --accent: #b08d57;
-    --bg: #e6eaf4;
+    --bg: #ffffff;
     --card: rgba(255,255,255,.62);
-    --card-border: rgba(255,255,255,.85);
-    --glass-shadow: 0 10px 36px rgba(28,35,80,.14);
-    /* 背景光暈色（依身分主題切換） */
-    --orb1: #d8a3ad;
-    --orb2: #e3c391;
-    --orb3: #a8c0e4;
+    --card-border: #e6e9ef;
+    --glass-shadow: 0 6px 24px rgba(28,35,80,.10);
     --text: #2b2b2b;
     --muted: #6f7580;
     --border: #dfe3e8;
@@ -28,25 +24,11 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   /* 依身分切換整體配色（點選身分卡後套用） */
   /* 導師沿用預設酒紅品牌色，不另外覆寫 */
-  body.theme-chief {
-    --primary: #2b5f8a; --primary-dark: #204a6d; --primary-light: #e7eef5;
-    --orb1: #8fb6db; --orb2: #a9d3e0; --orb3: #b4c4e8;
-  }
-  body.theme-dean {
-    --primary: #2e7d54; --primary-dark: #226141; --primary-light: #e6f3ec;
-    --orb1: #8ac9a6; --orb2: #c3da96; --orb3: #9ad0c6;
-  }
+  body.theme-chief { --primary: #2b5f8a; --primary-dark: #204a6d; --primary-light: #e7eef5; }
+  body.theme-dean  { --primary: #2e7d54; --primary-dark: #226141; --primary-light: #e6f3ec; }
   body {
     font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
-    color: var(--text); min-height: 100vh;
-    background-color: var(--bg);
-    background-image:
-      radial-gradient(46rem 34rem at 10% -8%, var(--orb1), transparent 66%),
-      radial-gradient(40rem 30rem at 94% 0%, var(--orb3), transparent 62%),
-      radial-gradient(38rem 32rem at 78% 92%, var(--orb2), transparent 64%),
-      radial-gradient(34rem 28rem at 16% 96%, var(--orb3), transparent 62%);
-    background-attachment: fixed;
-    transition: background-color .35s;
+    color: var(--text); min-height: 100vh; background: var(--bg);
   }
   header.topbar {
     background: linear-gradient(135deg, var(--primary-dark), var(--primary));
