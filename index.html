@@ -207,6 +207,18 @@ const STATUS_LABEL = {
 };
 const ROLE_LABEL = { teacher: '導師', chief: '一般科主任', dean: '教學部部長' };
 
+/* ── 導師名單資料庫：請在此維護「姓名: 單位」，導師輸入姓名後將自動帶出單位 ── */
+const TEACHERS = {
+  '王小明': '一般內科',
+  '林美慧': '家庭醫學科',
+  '張志豪': '一般外科',
+  '陳雅婷': '小兒科',
+  '李國強': '急診醫學科',
+};
+
+/* ── 主管密碼 ── */
+const ROLE_PASSWORDS = { chief: '940963', dean: '010101' };
+
 function loadAll()  { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
 function saveAll(l) { localStorage.setItem(STORE_KEY, JSON.stringify(l)); }
 function getRec(id) { return loadAll().find(r => r.id === id); }
@@ -221,6 +233,7 @@ function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
 
 /* ═══════════════ 共用 UI ═══════════════ */
 let currentRole = null;
+let currentTeacher = null;
 const app = document.getElementById('app');
 
 function toast(msg) {
@@ -238,9 +251,12 @@ function setRole(role) {
   currentRole = role;
   const badge = document.getElementById('roleBadge');
   badge.style.display = role ? 'flex' : 'none';
-  if (role) document.getElementById('roleBadgeText').textContent = '目前身分：' + ROLE_LABEL[role];
+  if (role) {
+    const who = (role === 'teacher' && currentTeacher) ? `${ROLE_LABEL[role]}｜${currentTeacher}` : ROLE_LABEL[role];
+    document.getElementById('roleBadgeText').textContent = '目前身分：' + who;
+  }
 }
-function logout() { setRole(null); renderRoleSelect(); }
+function logout() { currentTeacher = null; setRole(null); renderRoleSelect(); }
 
 /* ═══════════════ 角色選擇 ═══════════════ */
 function renderRoleSelect() {
@@ -252,30 +268,83 @@ function renderRoleSelect() {
         <div class="role-card" onclick="enter('teacher')">
           <div class="icon">🧑‍🏫</div>
           <h3>導師</h3>
-          <p>填寫本期評核表之自評分數並簽名送出，可追蹤評核進度。</p>
+          <p>輸入姓名即自動帶出單位並進入自評表，送出後系統自動代簽。</p>
         </div>
         <div class="role-card" onclick="enter('chief')">
           <div class="icon">🩺</div>
           <h3>一般科主任</h3>
-          <p>審閱導師自評內容，逐項評分並填寫回饋後，送交教學部部長。</p>
+          <p>輸入密碼登入後，可檢視所有導師自評並逐一評分回饋，送交教學部部長。</p>
         </div>
         <div class="role-card" onclick="enter('dean')">
           <div class="icon">🏛️</div>
           <h3>教學部部長</h3>
-          <p>完成最終評分、回饋與學員滿意度登錄，結案後可列印存查。</p>
+          <p>輸入密碼登入後，完成最終評分、回饋與學員滿意度登錄並結案。</p>
         </div>
       </div>
     </div>`;
 }
 function enter(role) {
+  if (role === 'teacher') renderTeacherLogin();
+  else renderPasswordGate(role);
+}
+
+/* ═══════════════ 導師：姓名登入 ═══════════════ */
+function renderTeacherLogin() {
+  app.innerHTML = `
+    <span class="back-link" onclick="renderRoleSelect()">← 返回身分選擇</span>
+    <div class="card" style="max-width:460px;margin:30px auto">
+      <h2>🧑‍🏫 導師登入</h2>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>請輸入您的姓名 <span class="req">*</span></label>
+        <input type="text" id="loginName" placeholder="輸入姓名後將自動帶出您的單位"
+               onkeydown="if(event.key==='Enter')teacherLogin()">
+      </div>
+      <div class="actions-bar" style="justify-content:center">
+        <button class="btn btn-primary" style="width:100%" onclick="teacherLogin()">進入評核 →</button>
+      </div>
+    </div>`;
+  document.getElementById('loginName').focus();
+}
+
+function teacherLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  if (!name) return toast('⚠️ 請輸入姓名');
+  if (!(name in TEACHERS)) return toast('⚠️ 名單中查無此姓名，請確認輸入是否正確或洽教學部');
+  currentTeacher = name;
+  setRole('teacher');
+  const mine = loadAll().filter(r => r.name === name && r.period === PERIOD);
+  if (mine.length) renderTeacherHome();
+  else renderTeacherForm();
+}
+
+/* ═══════════════ 主任 / 部長：密碼登入 ═══════════════ */
+function renderPasswordGate(role) {
+  app.innerHTML = `
+    <span class="back-link" onclick="renderRoleSelect()">← 返回身分選擇</span>
+    <div class="card" style="max-width:460px;margin:30px auto">
+      <h2>🔒 ${ROLE_LABEL[role]}登入</h2>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>請輸入密碼 <span class="req">*</span></label>
+        <input type="password" id="gatePwd" placeholder="請輸入${ROLE_LABEL[role]}密碼"
+               onkeydown="if(event.key==='Enter')checkGate('${role}')">
+      </div>
+      <div class="actions-bar" style="justify-content:center">
+        <button class="btn btn-primary" style="width:100%" onclick="checkGate('${role}')">登入 →</button>
+      </div>
+    </div>`;
+  document.getElementById('gatePwd').focus();
+}
+
+function checkGate(role) {
+  const pwd = document.getElementById('gatePwd').value;
+  if (pwd !== ROLE_PASSWORDS[role]) return toast('⚠️ 密碼錯誤，請重新輸入');
   setRole(role);
-  if (role === 'teacher') renderTeacherHome();
-  else renderReviewList(role);
+  renderReviewList(role);
 }
 
 /* ═══════════════ 導師端 ═══════════════ */
 function renderTeacherHome() {
-  const list = loadAll();
+  const list = loadAll().filter(r => r.name === currentTeacher);
   const rows = list.map(r => `
     <tr>
       <td>${esc(r.name)}</td>
@@ -287,23 +356,19 @@ function renderTeacherHome() {
     </tr>`).join('');
   app.innerHTML = `
     <div class="card">
-      <h2>📝 填寫評核表（${PERIOD}）</h2>
-      <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
-        請完成自評後送出，系統將自動送交一般科主任評核。
-      </p>
-      <button class="btn btn-primary" onclick="renderTeacherForm()">＋ 新增評核表</button>
-    </div>
-    <div class="card">
-      <h2>📋 我的評核表</h2>
+      <h2>📋 我的評核表（${PERIOD}）</h2>
       ${list.length ? `
         <table class="list-table">
           <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th>送出日期</th><th></th></tr>
           ${rows}
-        </table>` : `<div class="empty-hint">尚無評核紀錄，請點選「新增評核表」開始填寫。</div>`}
+        </table>` : `<div class="empty-hint">尚無評核紀錄。</div>`}
+      ${list.length ? '' : `<div style="text-align:center"><button class="btn btn-primary" onclick="renderTeacherForm()">開始填寫評核表 →</button></div>`}
     </div>`;
 }
 
 function renderTeacherForm() {
+  const name = currentTeacher;
+  const unit = TEACHERS[name] || '';
   const itemRows = ITEMS.map((it, i) => `
     <tr>
       <td class="item-name">${esc(it.text)}</td>
@@ -312,18 +377,13 @@ function renderTeacherForm() {
            oninput="clampScore(this, ${it.max}); updateSelfTotal()"></td>
     </tr>`).join('');
   app.innerHTML = `
-    <span class="back-link" onclick="renderTeacherHome()">← 返回列表</span>
+    <span class="back-link" onclick="renderTeacherHome()">← 返回我的評核表</span>
     <div class="card">
       <h2>一般醫學長期導師評核表（${PERIOD}）— 導師自評</h2>
-      <div class="form-row">
-        <div class="form-group">
-          <label>姓名 <span class="req">*</span></label>
-          <input type="text" id="fName" placeholder="請輸入導師姓名">
-        </div>
-        <div class="form-group">
-          <label>單位 <span class="req">*</span></label>
-          <input type="text" id="fUnit" placeholder="請輸入所屬單位">
-        </div>
+      <div class="info-strip">
+        <div><b>姓名：</b>${esc(name)}</div>
+        <div><b>單位：</b>${esc(unit)}</div>
+        <div><b>日期：</b>${todayStr()}</div>
       </div>
       <div class="section-label">評量內容（自評）</div>
       <table class="score-table">
@@ -331,17 +391,7 @@ function renderTeacherForm() {
         ${itemRows}
         <tr class="total-row"><td class="item-name" style="text-align:center">總　積　分</td><td>100</td><td id="selfTotalCell">0</td></tr>
       </table>
-      <div class="score-note">※ 各項得分不得超過配分上限。</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>導師簽名 <span class="req">*</span></label>
-          <input type="text" id="fSig" placeholder="請輸入姓名以代替簽名">
-        </div>
-        <div class="form-group">
-          <label>日期</label>
-          <input type="date" id="fDate" value="${todayStr()}">
-        </div>
-      </div>
+      <div class="score-note">※ 各項得分不得超過配分上限。送出後系統將自動以您的姓名代替簽名。</div>
       <div class="actions-bar">
         <button class="btn btn-outline" onclick="renderTeacherHome()">取消</button>
         <button class="btn btn-primary" onclick="submitTeacherForm()">送出評核表 →</button>
@@ -362,14 +412,10 @@ function updateSelfTotal() {
 }
 
 function submitTeacherForm() {
-  const name = document.getElementById('fName').value.trim();
-  const unit = document.getElementById('fUnit').value.trim();
-  const sig  = document.getElementById('fSig').value.trim();
-  const date = document.getElementById('fDate').value || todayStr();
+  const name = currentTeacher;
+  const unit = TEACHERS[name] || '';
   const scores = ITEMS.map((_, i) => document.getElementById('self_' + i).value);
-  if (!name || !unit) return toast('⚠️ 請填寫姓名與單位');
   if (scores.some(s => s === '')) return toast('⚠️ 請完成所有自評項目');
-  if (!sig) return toast('⚠️ 請輸入導師簽名');
   const rec = {
     id: 'r' + Date.now(),
     period: PERIOD, name, unit,
@@ -377,7 +423,7 @@ function submitTeacherForm() {
     chiefScores: null, chiefTotal: null, chiefFeedback: '',
     deanScores: null, deanTotal: null, deanFeedback: '',
     satisfaction: null,
-    sigs: { teacher: { name: sig, date }, chief: null, dean: null },
+    sigs: { teacher: { name, date: todayStr() }, chief: null, dean: null },
     status: 'pending_chief',
     submittedAt: todayStr(),
   };
