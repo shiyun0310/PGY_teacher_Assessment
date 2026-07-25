@@ -150,11 +150,20 @@
     background: var(--green); color: #fff; padding: 12px 28px; border-radius: 8px;
     font-size: 15px; box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 99; display: none;
   }
+  .toast.error { background: #b3403a; }
   .busy-overlay {
     position: fixed; inset: 0; background: rgba(255,255,255,.65); z-index: 98;
     display: none; align-items: center; justify-content: center;
     font-size: 16px; font-weight: 700; color: var(--primary-dark);
   }
+  .spinner {
+    width: 22px; height: 22px; border: 3px solid var(--primary-light);
+    border-top-color: var(--primary); border-radius: 50%;
+    animation: spin .8s linear infinite; margin-right: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .svg-icon { display: inline-block; vertical-align: -3px; color: var(--primary); }
+  .card h2 .svg-icon { margin-right: 8px; }
   .actions-bar { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
   .back-link { color: var(--primary); cursor: pointer; font-size: 14px; margin-bottom: 14px; display: inline-block; }
   .back-link:hover { text-decoration: underline; }
@@ -195,7 +204,7 @@
 
 <main id="app"></main>
 <div class="toast" id="toast"></div>
-<div class="busy-overlay" id="busy">⏳ 處理中，請稍候…</div>
+<div class="busy-overlay" id="busy"><span class="spinner"></span>處理中，請稍候…</div>
 
 <script>
 /* ═══════════════ 資料層 ═══════════════ */
@@ -302,11 +311,31 @@ const app = document.getElementById('app');
 
 function setBusy(on) { document.getElementById('busy').style.display = on ? 'flex' : 'none'; }
 
-function toast(msg) {
+/* ── 簡約線條圖示（SVG）── */
+function icon(name, size) {
+  const paths = {
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>',
+    stethoscope: '<path d="M5 3v5a6 6 0 0 0 12 0V3"/><path d="M11 14v2a4.5 4.5 0 0 0 9 0v-2.5"/><circle cx="20" cy="11" r="2.5"/>',
+    building: '<path d="M3 21h18"/><path d="M5 21V9h14v12"/><path d="M12 3 4 9h16z"/><path d="M9 21v-6M15 21v-6"/>',
+    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9z"/><path d="M9 12h6M9 16h6"/>',
+    bell: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+    folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    printer: '<path d="M7 8V3h10v5"/><rect x="4" y="8" width="16" height="8" rx="1.5"/><path d="M7 13h10v8H7z"/>',
+  };
+  return `<svg class="svg-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${paths[name] || ''}</svg>`;
+}
+
+function toast(msg, type) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.style.display = 'block';
+  t.textContent = msg;
+  t.className = 'toast' + (type === 'error' ? ' error' : '');
+  t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 2400);
 }
+function toastErr(msg) { return toast(msg, 'error'); }
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -332,17 +361,17 @@ function renderRoleSelect() {
       <p class="hint">依身分進入對應的評核流程：導師自評 → 一般科主任評核 → 教學部部長評核</p>
       <div class="role-cards">
         <div class="role-card" onclick="enter('teacher')">
-          <div class="icon">🧑‍🏫</div>
+          <div class="icon">${icon('person', 42)}</div>
           <h3>導師</h3>
           <p>輸入姓名即自動帶出單位並進入自評表，送出後系統自動代簽。</p>
         </div>
         <div class="role-card" onclick="enter('chief')">
-          <div class="icon">🩺</div>
+          <div class="icon">${icon('stethoscope', 42)}</div>
           <h3>一般科主任</h3>
           <p>輸入密碼登入後，可檢視所有導師自評並逐一評分回饋，送交教學部部長。</p>
         </div>
         <div class="role-card" onclick="enter('dean')">
-          <div class="icon">🏛️</div>
+          <div class="icon">${icon('building', 42)}</div>
           <h3>教學部部長</h3>
           <p>輸入密碼登入後，完成最終評分、回饋與學員滿意度登錄並結案。</p>
         </div>
@@ -359,7 +388,7 @@ function renderTeacherLogin() {
   app.innerHTML = `
     <span class="back-link" onclick="renderRoleSelect()">← 返回身分選擇</span>
     <div class="card" style="max-width:460px;margin:30px auto">
-      <h2>🧑‍🏫 導師登入</h2>
+      <h2>${icon('person', 18)}導師登入</h2>
       <div class="form-group" style="margin-bottom:16px">
         <label>請輸入您的姓名 <span class="req">*</span></label>
         <input type="text" id="loginName" placeholder="輸入姓名後將自動帶出您的單位"
@@ -374,15 +403,15 @@ function renderTeacherLogin() {
 
 async function teacherLogin() {
   const name = document.getElementById('loginName').value.trim();
-  if (!name) return toast('⚠️ 請輸入姓名');
+  if (!name) return toastErr('請輸入姓名');
   setBusy(true);
   try {
     if (USE_API) {
       const r = await api({ action: 'teacherLogin', name });
-      if (!r.ok) return toast('⚠️ 名單中查無此姓名，請確認輸入是否正確或洽教學部');
+      if (!r.ok) return toastErr('名單中查無此姓名，請確認輸入是否正確或洽教學部');
       currentUnit = r.unit;
     } else {
-      if (!(name in TEACHERS)) return toast('⚠️ 名單中查無此姓名，請確認輸入是否正確或洽教學部');
+      if (!(name in TEACHERS)) return toastErr('名單中查無此姓名，請確認輸入是否正確或洽教學部');
       currentUnit = TEACHERS[name];
     }
     currentTeacher = name;
@@ -392,7 +421,7 @@ async function teacherLogin() {
     if (mine.length) renderTeacherHome();
     else renderTeacherForm();
   } catch (e) {
-    toast('⚠️ 連線失敗，請稍後再試（' + e.message + '）');
+    toastErr('連線失敗，請稍後再試（' + e.message + '）');
   } finally {
     setBusy(false);
   }
@@ -403,7 +432,7 @@ function renderPasswordGate(role) {
   app.innerHTML = `
     <span class="back-link" onclick="renderRoleSelect()">← 返回身分選擇</span>
     <div class="card" style="max-width:460px;margin:30px auto">
-      <h2>🔒 ${ROLE_LABEL[role]}登入</h2>
+      <h2>${icon('lock', 18)}${ROLE_LABEL[role]}登入</h2>
       <div class="form-group" style="margin-bottom:16px">
         <label>請輸入密碼 <span class="req">*</span></label>
         <input type="password" id="gatePwd" placeholder="請輸入${ROLE_LABEL[role]}密碼"
@@ -422,14 +451,14 @@ async function checkGate(role) {
   try {
     if (USE_API) {
       const r = await api({ action: 'login', role, password: pwd });
-      if (!r.ok) return toast('⚠️ 密碼錯誤，請重新輸入');
+      if (!r.ok) return toastErr('密碼錯誤，請重新輸入');
     } else {
-      if (pwd !== ROLE_PASSWORDS[role]) return toast('⚠️ 密碼錯誤，請重新輸入');
+      if (pwd !== ROLE_PASSWORDS[role]) return toastErr('密碼錯誤，請重新輸入');
     }
     setRole(role);
     await renderReviewList(role);
   } catch (e) {
-    toast('⚠️ 連線失敗，請稍後再試（' + e.message + '）');
+    toastErr('連線失敗，請稍後再試（' + e.message + '）');
   } finally {
     setBusy(false);
   }
@@ -440,7 +469,7 @@ async function renderTeacherHome() {
   if (USE_API) {
     setBusy(true);
     try { await refreshRecords(); }
-    catch (e) { toast('⚠️ 讀取資料失敗（' + e.message + '）'); }
+    catch (e) { toastErr('讀取資料失敗（' + e.message + '）'); }
     finally { setBusy(false); }
   }
   const list = loadAll().filter(r => r.name === currentTeacher);
@@ -455,7 +484,7 @@ async function renderTeacherHome() {
     </tr>`).join('');
   app.innerHTML = `
     <div class="card">
-      <h2>📋 我的評核表（${PERIOD}）</h2>
+      <h2>${icon('clipboard', 18)}我的評核表（${PERIOD}）</h2>
       ${list.length ? `
         <table class="list-table">
           <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th>送出日期</th><th></th></tr>
@@ -514,7 +543,7 @@ async function submitTeacherForm() {
   const name = currentTeacher;
   const unit = currentUnit || '';
   const scores = ITEMS.map((_, i) => document.getElementById('self_' + i).value);
-  if (scores.some(s => s === '')) return toast('⚠️ 請完成所有自評項目');
+  if (scores.some(s => s === '')) return toastErr('請完成所有自評項目');
   const rec = {
     id: 'r' + Date.now(),
     period: PERIOD, name, unit,
@@ -529,10 +558,10 @@ async function submitTeacherForm() {
   setBusy(true);
   try {
     await persist(rec);
-    toast('✅ 已送出，將由一般科主任進行評核');
+    toast('已送出，將由一般科主任進行評核');
     renderTeacherHome();
   } catch (e) {
-    toast('⚠️ 送出失敗，請稍後再試（' + e.message + '）');
+    toastErr('送出失敗，請稍後再試（' + e.message + '）');
   } finally {
     setBusy(false);
   }
@@ -543,7 +572,7 @@ async function renderReviewList(role) {
   if (USE_API) {
     setBusy(true);
     try { await refreshRecords(); }
-    catch (e) { toast('⚠️ 讀取資料失敗（' + e.message + '）'); }
+    catch (e) { toastErr('讀取資料失敗（' + e.message + '）'); }
     finally { setBusy(false); }
   }
   const pendingStatus = role === 'chief' ? 'pending_chief' : 'pending_dean';
@@ -564,7 +593,7 @@ async function renderReviewList(role) {
     </tr>`;
   app.innerHTML = `
     <div class="card">
-      <h2>🔔 待評核（${ROLE_LABEL[role]}）</h2>
+      <h2>${icon('bell', 18)}待評核（${ROLE_LABEL[role]}）</h2>
       ${pending.length ? `
         <table class="list-table">
           <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th></th></tr>
@@ -572,7 +601,7 @@ async function renderReviewList(role) {
         </table>` : `<div class="empty-hint">目前沒有待評核的表單。</div>`}
     </div>
     <div class="card">
-      <h2>🗂️ 其他評核表</h2>
+      <h2>${icon('folder', 18)}其他評核表</h2>
       ${others.length ? `
         <table class="list-table">
           <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th></th></tr>
@@ -650,7 +679,7 @@ function renderReviewForm(id, role) {
       <div class="actions-bar">
         <button class="btn btn-outline" onclick="renderReviewList('${role}')">取消</button>
         <button class="btn btn-primary" onclick="submitReview('${id}','${role}')">
-          ${isChief ? '完成評核，送交教學部部長 →' : '完成最終評核，結案 ✔'}
+          ${isChief ? '完成評核，送交教學部部長 →' : '完成最終評核，結案'}
         </button>
       </div>
     </div>`;
@@ -668,11 +697,11 @@ async function submitReview(id, role) {
   const feedback = document.getElementById('revFeedback').value.trim();
   const sig = ROLE_SIGNERS[role];
   const date = todayStr();
-  if (scores.some(s => s === '')) return toast('⚠️ 請完成所有評分項目');
-  if (!feedback) return toast('⚠️ 請填寫回饋');
+  if (scores.some(s => s === '')) return toastErr('請完成所有評分項目');
+  if (!feedback) return toastErr('請填寫回饋');
   if (role === 'chief') {
     const sat = document.getElementById('satisfaction').value;
-    if (!sat) return toast('⚠️ 請選擇學員對導師滿意度');
+    if (!sat) return toastErr('請選擇學員對導師滿意度');
     r.chiefScores = scores.map(Number);
     r.chiefTotal = sum(scores);
     r.chiefFeedback = feedback;
@@ -689,10 +718,10 @@ async function submitReview(id, role) {
   setBusy(true);
   try {
     await persist(r);
-    toast(role === 'chief' ? '✅ 已完成主任評核，送交教學部部長' : '✅ 評核流程已全部完成');
+    toast(role === 'chief' ? '已完成主任評核，送交教學部部長' : '評核流程已全部完成');
     renderReviewList(role);
   } catch (e) {
-    toast('⚠️ 儲存失敗，請稍後再試（' + e.message + '）');
+    toastErr('儲存失敗，請稍後再試（' + e.message + '）');
   } finally {
     setBusy(false);
   }
@@ -718,7 +747,7 @@ function renderDetail(id) {
     <span class="back-link no-print" onclick="${backFn}">← 返回</span>
     <div class="card no-print" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
       <div>目前狀態：${statusTag(r.status)}</div>
-      <button class="btn btn-primary" onclick="window.print()">🖨️ 列印 / 另存 PDF</button>
+      <button class="btn btn-primary" onclick="window.print()">${icon('printer', 16)} 列印 / 另存 PDF</button>
     </div>
     <div class="print-sheet">
       <div class="hosp">
