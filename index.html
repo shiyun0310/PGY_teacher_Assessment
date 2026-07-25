@@ -219,6 +219,9 @@ const TEACHERS = {
 /* ── 主管密碼 ── */
 const ROLE_PASSWORDS = { chief: '940963', dean: '010101' };
 
+/* ── 主管簽名（送出時自動帶入，日期為當天）── */
+const ROLE_SIGNERS = { chief: '郭妍伶', dean: '蘇慧真' };
+
 function loadAll()  { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
 function saveAll(l) { localStorage.setItem(STORE_KEY, JSON.stringify(l)); }
 function getRec(id) { return loadAll().find(r => r.id === id); }
@@ -510,9 +513,9 @@ function renderReviewForm(id, role) {
       </table>
       <div class="score-note">※ 各項得分不得超過配分上限。</div>
       ${isChief ? '' : `
-        <div class="section-label">一般科主任回饋（前一關）</div>
+        <div class="section-label">一般科主任回饋</div>
         <div class="feedback-box">${esc(r.chiefFeedback) || '（無）'}</div>`}
-      <div class="section-label">回饋（${ROLE_LABEL[role]}）<span class="req">*</span></div>
+      <div class="section-label">${ROLE_LABEL[role]}回饋 <span class="req">*</span></div>
       <div class="form-group">
         <textarea id="revFeedback" placeholder="請填寫對導師之回饋建議"></textarea>
       </div>
@@ -530,15 +533,8 @@ function renderReviewForm(id, role) {
             </select>
           </div>
         </div>`}
-      <div class="form-row" style="margin-top:14px">
-        <div class="form-group">
-          <label>${ROLE_LABEL[role]}簽名 <span class="req">*</span></label>
-          <input type="text" id="revSig" placeholder="請輸入姓名以代替簽名">
-        </div>
-        <div class="form-group">
-          <label>日期</label>
-          <input type="date" id="revDate" value="${todayStr()}">
-        </div>
+      <div class="score-note" style="margin-top:14px">
+        ※ 送出後系統將自動簽名：${ROLE_LABEL[role]}「${ROLE_SIGNERS[role]}」，日期為 ${todayStr()}。
       </div>
       <div class="actions-bar">
         <button class="btn btn-outline" onclick="renderReviewList('${role}')">取消</button>
@@ -559,11 +555,10 @@ function submitReview(id, role) {
   if (!r) return;
   const scores = ITEMS.map((_, i) => document.getElementById('rev_' + i).value);
   const feedback = document.getElementById('revFeedback').value.trim();
-  const sig = document.getElementById('revSig').value.trim();
-  const date = document.getElementById('revDate').value || todayStr();
+  const sig = ROLE_SIGNERS[role];
+  const date = todayStr();
   if (scores.some(s => s === '')) return toast('⚠️ 請完成所有評分項目');
   if (!feedback) return toast('⚠️ 請填寫回饋');
-  if (!sig) return toast('⚠️ 請輸入簽名');
   if (role === 'chief') {
     r.chiefScores = scores.map(Number);
     r.chiefTotal = sum(scores);
