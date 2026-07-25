@@ -166,18 +166,22 @@ function fillMeetingLinks() {
   }
 
   var names = sh.getRange(2, T_NAME + 1, last - 1, 1).getValues();
+  var linkRange = sh.getRange(2, T_LINK + 1, last - 1, 1);
+  var existing = linkRange.getValues();
   var out = [], matched = 0, missing = [];
   for (var i = 0; i < names.length; i++) {
     var n = String(names[i][0]).trim();
-    if (!n) { out.push(['']); continue; }
+    var prev = String(existing[i][0] || '').trim();
+    if (!n) { out.push([prev]); continue; }
     var hit = '';
     for (var j = 0; j < files.length; j++) {
       if (files[j].name.indexOf(n) >= 0) { hit = files[j].url; break; }
     }
-    out.push([hit]);
+    /* 比對不到時保留原本欄位內容，避免覆蓋手動填入的連結 */
+    out.push([hit || prev]);
     if (hit) matched++; else missing.push(n);
   }
-  sh.getRange(2, T_LINK + 1, out.length, 1).setValues(out);
+  linkRange.setValues(out);
   Logger.log('資料夾檔案數：' + files.length + '，成功對應：' + matched +
     '，查無檔案：' + (missing.length ? missing.join('、') : '無'));
 }

@@ -59,7 +59,7 @@
 
 1. 把 19 份座談記錄單放進雲端硬碟的**同一個資料夾**，檔名需包含導師姓名（例如 `王小明_導師座談記錄單_1-6月`）。
 2. 開啟該資料夾，從網址列複製資料夾 ID：`https://drive.google.com/drive/folders/【這一段】`。
-3. 在 Apps Script 編輯器把 ID 填入 `Code.gs` 最上方的 `MEETING_FOLDER_ID`。
+3. 在 Apps Script 編輯器把 ID 填入 `Code.gs` 最上方的 `MEETING_FOLDER_ID`。**請只填在 Apps Script 編輯器中，不要提交進本 repo**——這是公開 repo，資料夾 ID 一旦公開，等同所有記錄單對外開放。
 4. 編輯器上方函式下拉選單選擇 **`fillMeetingLinks`**，按「執行」。系統會依檔名比對姓名，自動把連結填進 `teachers` 工作表第 5 欄；執行紀錄會列出成功筆數與查無檔案的姓名。
 5. 設定資料夾的共用權限為「知道連結的任何人皆可檢視」，否則其他人點連結會顯示沒有權限。日後新增檔案只要重跑一次 `fillMeetingLinks` 即可。
 
