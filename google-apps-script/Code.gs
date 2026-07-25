@@ -11,6 +11,12 @@
 var PASSWORDS = { chief: '940963', dean: '010101' };
 var SIGNERS   = { chief: '郭妍伶', dean: '蘇慧真' };
 
+/* ── 導師座談記錄單所在的 Google 雲端硬碟資料夾 ID ──
+   從資料夾網址取得：https://drive.google.com/drive/folders/【這一段就是 ID】
+   設定後在編輯器選擇 fillMeetingLinks 執行一次，系統會依檔名中的姓名
+   自動把連結填入 teachers 工作表第 4 欄。 */
+var MEETING_FOLDER_ID = '';
+
 var TEACHER_SHEET = 'teachers';
 var REC_SHEET = 'assessments';
 /* 程式內部使用的欄位鍵值（依「欄位位置」對應，工作表第 1 列標題可自由改名） */
@@ -22,7 +28,7 @@ var REC_HEADERS = [
   'status', 'teacher_signed_at', 'chief_signed_at', 'dean_signed_at',
 ];
 /* 自動建立工作表時顯示的中文標題（僅供閱讀，順序需與 REC_HEADERS 一致） */
-var TEACHER_LABELS = ['姓名', '單位', '停用請填N'];
+var TEACHER_LABELS = ['姓名', '單位', '停用請填N', '座談記錄單連結'];
 var REC_LABELS = [
   '編號', '期別', '姓名', '單位',
   '自評1', '自評2', '自評3', '自評4', '自評總分',
@@ -51,17 +57,38 @@ function handle(req) {
       return { ok: PASSWORDS[req.role] === String(req.password) };
     case 'teacherLogin':
       var t = findTeacher(req.name);
-      return t ? { ok: true, unit: t.unit } : { ok: false };
+      return t ? { ok: true, unit: t.unit, meetingLink: t.meetingLink } : { ok: false };
     case 'getRecords':
-      return { records: getRecords() };
+      return { records: scopedRecords(req) };
     case 'saveRecord':
+      if (!canSave(req)) return { error: '未授權的存取' };
       var lock = LockService.getScriptLock();
       lock.waitLock(10000);
       try { saveRecord(req.record); } finally { lock.releaseLock(); }
-      return { ok: true, records: getRecords() };
+      return { ok: true, records: scopedRecords(req) };
     default:
       return { error: 'unknown action: ' + req.action };
   }
+}
+
+/* 依身分限定可讀取的資料：導師只拿得到自己那筆，主管須通過密碼驗證 */
+function scopedRecords(req) {
+  if (req.role === 'chief' || req.role === 'dean') {
+    if (PASSWORDS[req.role] !== String(req.password)) throw new Error('密碼驗證失敗');
+    return getRecords(null);
+  }
+  if (req.role === 'teacher' && req.name) return getRecords(String(req.name).trim());
+  return [];
+}
+
+function canSave(req) {
+  if (req.role === 'chief' || req.role === 'dean') {
+    return PASSWORDS[req.role] === String(req.password);
+  }
+  if (req.role === 'teacher') {
+    return !!(req.record && String(req.record.name).trim() === String(req.name).trim());
+  }
+  return false;
 }
 
 function json(obj) {
@@ -92,21 +119,71 @@ function findTeacher(name) {
     var r = rows[i];
     if (String(r[0]).trim() === String(name).trim() &&
         String(r[2]).trim().toUpperCase() !== 'N') {
-      return { name: String(r[0]).trim(), unit: String(r[1]).trim() };
+      return {
+        name: String(r[0]).trim(),
+        unit: String(r[1]).trim(),
+        meetingLink: String(r[3] || '').trim(),
+      };
     }
   }
   return null;
 }
 
-/* ── 讀取所有評核紀錄，轉為前端使用的資料格式 ── */
-function getRecords() {
+/* 姓名 → 座談記錄單連結 對照表 */
+function meetingLinkMap() {
+  var sh = getSheet(TEACHER_SHEET, TEACHER_LABELS);
+  var rows = sh.getDataRange().getValues().slice(1);
+  var map = {};
+  for (var i = 0; i < rows.length; i++) {
+    var n = String(rows[i][0]).trim();
+    if (n) map[n] = String(rows[i][3] || '').trim();
+  }
+  return map;
+}
+
+/* ── 一次性工具：掃描 Drive 資料夾，依檔名中的姓名自動填入連結 ──
+   在 Apps Script 編輯器上方選擇本函式後按「執行」，完成後查看執行紀錄。 */
+function fillMeetingLinks() {
+  if (!MEETING_FOLDER_ID) throw new Error('請先在程式最上方設定 MEETING_FOLDER_ID');
+  var sh = getSheet(TEACHER_SHEET, TEACHER_LABELS);
+  var last = sh.getLastRow();
+  if (last < 2) throw new Error('teachers 工作表尚無導師名單');
+
+  var files = [];
+  var it = DriveApp.getFolderById(MEETING_FOLDER_ID).getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    files.push({ name: f.getName(), url: f.getUrl() });
+  }
+
+  var names = sh.getRange(2, 1, last - 1, 1).getValues();
+  var out = [], matched = 0, missing = [];
+  for (var i = 0; i < names.length; i++) {
+    var n = String(names[i][0]).trim();
+    if (!n) { out.push(['']); continue; }
+    var hit = '';
+    for (var j = 0; j < files.length; j++) {
+      if (files[j].name.indexOf(n) >= 0) { hit = files[j].url; break; }
+    }
+    out.push([hit]);
+    if (hit) matched++; else missing.push(n);
+  }
+  sh.getRange(2, 4, out.length, 1).setValues(out);
+  Logger.log('資料夾檔案數：' + files.length + '，成功對應：' + matched +
+    '，查無檔案：' + (missing.length ? missing.join('、') : '無'));
+}
+
+/* ── 讀取評核紀錄，轉為前端使用的資料格式（onlyName 不為空時僅回傳該導師）── */
+function getRecords(onlyName) {
   var sh = getSheet(REC_SHEET, REC_LABELS);
   var rows = sh.getDataRange().getValues().slice(1);
+  var links = meetingLinkMap();
   var records = [];
   for (var i = 0; i < rows.length; i++) {
     var o = {};
     for (var c = 0; c < REC_HEADERS.length; c++) o[REC_HEADERS[c]] = rows[i][c];
     if (!o.id) continue;
+    if (onlyName && String(o.name).trim() !== onlyName) continue;
     var chiefDate = fmtDate(o.chief_signed_at);
     var deanDate = fmtDate(o.dean_signed_at);
     records.push({
@@ -126,6 +203,7 @@ function getRecords() {
       deanTotal: numOrNull(o.dean_total),
       deanFeedback: String(o.dean_feedback || ''),
       status: String(o.status),
+      meetingLink: links[String(o.name).trim()] || '',
       submittedAt: fmtDate(o.teacher_signed_at),
       sigs: {
         teacher: { name: String(o.name), date: fmtDate(o.teacher_signed_at) },

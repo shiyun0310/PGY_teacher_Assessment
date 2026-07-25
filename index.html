@@ -109,6 +109,14 @@
   }
   .btn-sm { padding: 6px 16px; font-size: 13.5px; }
   .btn:disabled { background: #bbb; cursor: not-allowed; }
+  a.btn { text-decoration: none; }
+  .doc-strip {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--primary-light); border: 1px solid rgba(0,0,0,.05);
+    border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; font-size: 14.5px;
+  }
+  .doc-strip .label { font-weight: 700; color: var(--primary-dark); }
+  .doc-strip .none { color: var(--muted); }
 
   /* ── 表單 ── */
   .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -290,6 +298,15 @@ const ROLE_PASSWORDS = { chief: '940963', dean: '010101' };
 const ROLE_SIGNERS = { chief: '郭妍伶', dean: '蘇慧真' };
 
 let RECORDS = [];
+let currentPassword = '';
+
+/* 每次請求帶上身分，由後端限定可存取的資料範圍 */
+function withAuth(payload) {
+  payload.role = currentRole;
+  payload.name = currentTeacher;
+  payload.password = currentPassword;
+  return payload;
+}
 
 async function api(payload) {
   const res = await fetch(API_URL, {
@@ -325,8 +342,8 @@ function normalizeRecord(r) {
 
 async function refreshRecords() {
   RECORDS = USE_API
-    ? (await api({ action: 'getRecords' })).records.map(normalizeRecord)
-    : loadLocal();
+    ? (await api(withAuth({ action: 'getRecords' }))).records.map(normalizeRecord)
+    : loadLocal().filter(r => currentRole !== 'teacher' || r.name === currentTeacher);
   return RECORDS;
 }
 
@@ -335,7 +352,8 @@ function getRec(id) { return RECORDS.find(r => r.id === id); }
 
 async function persist(rec) {
   if (USE_API) {
-    RECORDS = (await api({ action: 'saveRecord', record: rec })).records.map(normalizeRecord);
+    RECORDS = (await api(withAuth({ action: 'saveRecord', record: rec })))
+      .records.map(normalizeRecord);
   } else {
     const list = loadLocal();
     const i = list.findIndex(r => r.id === rec.id);
@@ -351,6 +369,7 @@ function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
 let currentRole = null;
 let currentTeacher = null;
 let currentUnit = null;
+let currentMeetingLink = '';
 const app = document.getElementById('app');
 
 function setBusy(on) { document.getElementById('busy').style.display = on ? 'flex' : 'none'; }
@@ -366,6 +385,7 @@ function icon(name, size) {
     folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
     lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     printer: '<path d="M7 8V3h10v5"/><rect x="4" y="8" width="16" height="8" rx="1.5"/><path d="M7 13h10v8H7z"/>',
+    doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
   };
   return `<svg class="svg-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
@@ -398,7 +418,24 @@ function setRole(role) {
     document.getElementById('roleBadgeText').textContent = '目前身分：' + who;
   }
 }
-function logout() { currentTeacher = null; currentUnit = null; setRole(null); renderRoleSelect(); }
+function logout() {
+  currentTeacher = null; currentUnit = null; currentMeetingLink = ''; currentPassword = '';
+  RECORDS = [];
+  setRole(null);
+  renderRoleSelect();
+}
+
+/* 導師座談記錄單連結列（三種身分皆可點閱，導師僅能看到自己的） */
+function docStrip(link) {
+  const safe = /^https?:\/\//i.test(link || '') ? link : '';
+  return `
+    <div class="doc-strip no-print">
+      <span class="label">${icon('doc', 17)}${PERIOD} 導師座談記錄單</span>
+      ${safe
+        ? `<a class="btn btn-outline btn-sm" href="${esc(safe)}" target="_blank" rel="noopener">開啟記錄單</a>`
+        : `<span class="none">（尚未上傳，請洽教學部）</span>`}
+    </div>`;
+}
 
 /* ═══════════════ 角色選擇 ═══════════════ */
 function renderRoleSelect() {
@@ -459,9 +496,11 @@ async function teacherLogin() {
       const r = await api({ action: 'teacherLogin', name });
       if (!r.ok) return toastErr('名單中查無此姓名，請確認輸入是否正確或洽教學部');
       currentUnit = r.unit;
+      currentMeetingLink = r.meetingLink || '';
     } else {
       if (!(name in TEACHERS)) return toastErr('名單中查無此姓名，請確認輸入是否正確或洽教學部');
       currentUnit = TEACHERS[name];
+      currentMeetingLink = '';
     }
     currentTeacher = name;
     setRole('teacher');
@@ -504,6 +543,7 @@ async function checkGate(role) {
     } else {
       if (pwd !== ROLE_PASSWORDS[role]) return toastErr('密碼錯誤，請重新輸入');
     }
+    currentPassword = pwd;
     setRole(role);
     await renderReviewList(role);
   } catch (e) {
@@ -534,6 +574,7 @@ async function renderTeacherHome() {
   app.innerHTML = `
     <div class="card">
       <h2>${icon('clipboard', 18)}我的評核表（${PERIOD}）</h2>
+      ${docStrip(currentMeetingLink)}
       ${list.length ? `
         <table class="list-table">
           <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th>送出日期</th><th></th></tr>
@@ -562,6 +603,7 @@ function renderTeacherForm() {
         <div><b>單位：</b>${esc(unit)}</div>
         <div><b>日期：</b>${todayStr()}</div>
       </div>
+      ${docStrip(currentMeetingLink)}
       <div class="section-label">評量內容（自評）</div>
       <table class="score-table">
         <tr><th style="width:56%">評量內容</th><th>配分</th><th>自評得分</th></tr>
@@ -684,6 +726,7 @@ function renderReviewForm(id, role) {
         <div><b>單位：</b>${esc(r.unit)}</div>
         <div><b>導師送出日期：</b>${esc(r.submittedAt)}</div>
       </div>
+      ${docStrip(r.meetingLink)}
       <table class="score-table">
         <tr>
           <th style="width:44%">評量內容</th><th>配分</th><th>自評得分</th>
@@ -794,9 +837,12 @@ function renderDetail(id) {
                : currentRole ? `renderReviewList('${currentRole}')` : 'renderRoleSelect()';
   app.innerHTML = `
     <span class="back-link no-print" onclick="${backFn}">← 返回</span>
-    <div class="card no-print" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-      <div>目前狀態：${statusTag(r.status)}</div>
-      <button class="btn btn-primary" onclick="window.print()">${icon('printer', 16)} 列印 / 另存 PDF</button>
+    <div class="card no-print">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <div>目前狀態：${statusTag(r.status)}</div>
+        <button class="btn btn-primary" onclick="window.print()">${icon('printer', 16)} 列印 / 另存 PDF</button>
+      </div>
+      ${docStrip(r.meetingLink)}
     </div>
     <div class="print-sheet">
       <div class="hosp">
