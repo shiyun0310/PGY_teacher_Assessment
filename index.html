@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一般醫學長期導師評核平台｜奇美醫療財團法人奇美醫院</title>
+<style>
+  :root {
+    --primary: #8e3b46;
+    --primary-dark: #6e2c35;
+    --primary-light: #f7edee;
+    --accent: #b08d57;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #777;
+    --border: #dfe3e8;
+    --green: #2e7d54;
+    --orange: #c07b1a;
+    --blue: #2b5f8a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  header.topbar {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  header.topbar .logo {
+    width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--primary);
+    display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px;
+    flex-shrink: 0;
+  }
+  header.topbar h1 { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  header.topbar .sub { font-size: 12.5px; opacity: .85; margin-top: 2px; }
+  header.topbar .role-badge {
+    margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px;
+  }
+  header.topbar .role-badge span.badge {
+    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.4);
+    padding: 4px 14px; border-radius: 999px;
+  }
+  header.topbar button.logout {
+    background: #fff; color: var(--primary); border: none; padding: 6px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+  }
+  main { max-width: 1080px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  /* ── 角色選擇 ── */
+  .role-select { text-align: center; padding-top: 30px; }
+  .role-select h2 { font-size: 22px; margin-bottom: 6px; color: var(--primary-dark); }
+  .role-select p.hint { color: var(--muted); font-size: 14px; margin-bottom: 30px; }
+  .role-cards { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
+  .role-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    width: 270px; padding: 34px 24px 28px; cursor: pointer; transition: all .18s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .role-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(142,59,70,.18); border-color: var(--primary); }
+  .role-card .icon { font-size: 42px; margin-bottom: 14px; }
+  .role-card h3 { font-size: 18px; color: var(--primary-dark); margin-bottom: 8px; }
+  .role-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* ── 通用卡片 / 按鈕 ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 26px 30px; margin-bottom: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+  .card h2 { font-size: 18px; color: var(--primary-dark); margin-bottom: 18px;
+    padding-bottom: 10px; border-bottom: 2px solid var(--primary-light); }
+  .btn {
+    display: inline-block; border: none; border-radius: 8px; padding: 10px 26px;
+    font-size: 15px; cursor: pointer; font-weight: 600; letter-spacing: 1px;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .88; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn-sm { padding: 6px 16px; font-size: 13.5px; }
+  .btn:disabled { background: #bbb; cursor: not-allowed; }
+
+  /* ── 表單 ── */
+  .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+  .form-group { flex: 1; min-width: 220px; }
+  .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #444; }
+  .form-group label .req { color: #c0392b; }
+  .form-group input[type=text], .form-group input[type=date],
+  .form-group select, .form-group textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 15px; font-family: inherit; background: #fff;
+  }
+  .form-group textarea { resize: vertical; min-height: 90px; }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(142,59,70,.12);
+  }
+
+  table.score-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  table.score-table th, table.score-table td {
+    border: 1px solid var(--border); padding: 11px 12px; font-size: 14.5px; text-align: center;
+  }
+  table.score-table th { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
+  table.score-table td.item-name { text-align: left; line-height: 1.55; }
+  table.score-table input[type=number] {
+    width: 80px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 15px; text-align: center;
+  }
+  table.score-table input[type=number]:focus { outline: none; border-color: var(--primary); }
+  table.score-table input[type=number]:disabled { background: #f0f0f0; color: #999; border-color: #e5e5e5; }
+  table.score-table tr.total-row td { font-weight: 700; background: #faf7f2; font-size: 15.5px; }
+  .score-note { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+  td.readonly-score { font-weight: 600; color: var(--blue); }
+
+  /* ── 清單 ── */
+  table.list-table { width: 100%; border-collapse: collapse; }
+  table.list-table th, table.list-table td {
+    border-bottom: 1px solid var(--border); padding: 12px 10px; font-size: 14.5px; text-align: left;
+  }
+  table.list-table th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  table.list-table tr:hover td { background: #fafafa; }
+  .status-tag {
+    display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  }
+  .st-pending_chief { background: #fdf1e0; color: var(--orange); }
+  .st-pending_dean  { background: #e7eef5; color: var(--blue); }
+  .st-completed     { background: #e6f3ec; color: var(--green); }
+  .empty-hint { text-align: center; color: var(--muted); padding: 34px 0; font-size: 14.5px; }
+
+  .info-strip {
+    display: flex; gap: 26px; flex-wrap: wrap; background: var(--primary-light);
+    border-radius: 10px; padding: 14px 20px; margin-bottom: 20px; font-size: 14.5px;
+  }
+  .info-strip b { color: var(--primary-dark); }
+
+  .feedback-box {
+    background: #fafafa; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; font-size: 14.5px; line-height: 1.7; white-space: pre-wrap; min-height: 44px;
+  }
+  .section-label { font-size: 14px; font-weight: 700; color: var(--primary-dark); margin: 18px 0 8px; }
+
+  .sig-line { display: flex; gap: 30px; flex-wrap: wrap; font-size: 14.5px; margin-top: 6px; }
+  .sig-line .sig { color: #333; }
+  .sig-line .sig b { color: var(--primary-dark); }
+
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--green); color: #fff; padding: 12px 28px; border-radius: 8px;
+    font-size: 15px; box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 99; display: none;
+  }
+  .actions-bar { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+  .back-link { color: var(--primary); cursor: pointer; font-size: 14px; margin-bottom: 14px; display: inline-block; }
+  .back-link:hover { text-decoration: underline; }
+
+  /* ── 列印表單 ── */
+  .print-sheet { background: #fff; border: 1px solid var(--border); padding: 40px 46px; }
+  .print-sheet .hosp { text-align: center; line-height: 1.5; margin-bottom: 4px; }
+  .print-sheet .hosp .zh { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
+  .print-sheet .hosp .en { font-size: 13px; color: #555; }
+  .print-sheet .form-title { text-align: center; font-size: 17px; font-weight: 700; margin: 10px 0 18px; letter-spacing: 1px; }
+  .print-sheet table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  .print-sheet table th, .print-sheet table td { border: 1px solid #444; padding: 9px 10px; font-size: 14px; }
+  .print-sheet table th { background: #f2f2f2; text-align: center; }
+  .print-sheet .sig-block { margin-top: 26px; font-size: 14.5px; line-height: 2.4; }
+
+  @media print {
+    body { background: #fff; }
+    header.topbar, .no-print, .toast { display: none !important; }
+    main { max-width: none; padding: 0; }
+    .print-sheet { border: none; padding: 10px 6px; }
+    .card { border: none; box-shadow: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">奇</div>
+  <div>
+    <h1>一般醫學長期導師評核平台</h1>
+    <div class="sub">奇美醫療財團法人奇美醫院 Chi Mei Medical Center</div>
+  </div>
+  <div class="role-badge no-print" id="roleBadge" style="display:none">
+    <span class="badge" id="roleBadgeText"></span>
+    <button class="logout" onclick="logout()">切換身分</button>
+  </div>
+</header>
+
+<main id="app"></main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════ 資料層 ═══════════════ */
+const STORE_KEY = 'pgy_mentor_assessments_v1';
+const PERIOD = '115年1 ~ 6月';
+const ITEMS = [
+  { text: '1.是否每月1次與導生座談。', max: 35 },
+  { text: '2.是否每月繳交座談記錄單。', max: 20 },
+  { text: '3.當導生出現困難時是否積極幫忙輔導。', max: 25 },
+  { text: '4.導生若有生活或學習困難是否主動告知教學部。', max: 20 },
+];
+const STATUS_LABEL = {
+  pending_chief: '待一般科主任評核',
+  pending_dean:  '待教學部部長評核',
+  completed:     '已完成',
+};
+const ROLE_LABEL = { teacher: '導師', chief: '一般科主任', dean: '教學部部長' };
+
+function loadAll()  { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
+function saveAll(l) { localStorage.setItem(STORE_KEY, JSON.stringify(l)); }
+function getRec(id) { return loadAll().find(r => r.id === id); }
+function upsert(rec) {
+  const list = loadAll();
+  const i = list.findIndex(r => r.id === rec.id);
+  if (i >= 0) list[i] = rec; else list.push(rec);
+  saveAll(list);
+}
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
+
+/* ═══════════════ 共用 UI ═══════════════ */
+let currentRole = null;
+const app = document.getElementById('app');
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2400);
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function statusTag(st) { return `<span class="status-tag st-${st}">${STATUS_LABEL[st]}</span>`; }
+
+function setRole(role) {
+  currentRole = role;
+  const badge = document.getElementById('roleBadge');
+  badge.style.display = role ? 'flex' : 'none';
+  if (role) document.getElementById('roleBadgeText').textContent = '目前身分：' + ROLE_LABEL[role];
+}
+function logout() { setRole(null); renderRoleSelect(); }
+
+/* ═══════════════ 角色選擇 ═══════════════ */
+function renderRoleSelect() {
+  app.innerHTML = `
+    <div class="role-select">
+      <h2>請選擇您的身分</h2>
+      <p class="hint">依身分進入對應的評核流程：導師自評 → 一般科主任評核 → 教學部部長評核</p>
+      <div class="role-cards">
+        <div class="role-card" onclick="enter('teacher')">
+          <div class="icon">🧑‍🏫</div>
+          <h3>導師</h3>
+          <p>填寫本期評核表之自評分數並簽名送出，可追蹤評核進度。</p>
+        </div>
+        <div class="role-card" onclick="enter('chief')">
+          <div class="icon">🩺</div>
+          <h3>一般科主任</h3>
+          <p>審閱導師自評內容，逐項評分並填寫回饋後，送交教學部部長。</p>
+        </div>
+        <div class="role-card" onclick="enter('dean')">
+          <div class="icon">🏛️</div>
+          <h3>教學部部長</h3>
+          <p>完成最終評分、回饋與學員滿意度登錄，結案後可列印存查。</p>
+        </div>
+      </div>
+    </div>`;
+}
+function enter(role) {
+  setRole(role);
+  if (role === 'teacher') renderTeacherHome();
+  else renderReviewList(role);
+}
+
+/* ═══════════════ 導師端 ═══════════════ */
+function renderTeacherHome() {
+  const list = loadAll();
+  const rows = list.map(r => `
+    <tr>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.unit)}</td>
+      <td>${r.selfTotal} / 100</td>
+      <td>${statusTag(r.status)}</td>
+      <td>${esc(r.submittedAt || '')}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="renderDetail('${r.id}')">檢視</button></td>
+    </tr>`).join('');
+  app.innerHTML = `
+    <div class="card">
+      <h2>📝 填寫評核表（${PERIOD}）</h2>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
+        請完成自評後送出，系統將自動送交一般科主任評核。
+      </p>
+      <button class="btn btn-primary" onclick="renderTeacherForm()">＋ 新增評核表</button>
+    </div>
+    <div class="card">
+      <h2>📋 我的評核表</h2>
+      ${list.length ? `
+        <table class="list-table">
+          <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th>送出日期</th><th></th></tr>
+          ${rows}
+        </table>` : `<div class="empty-hint">尚無評核紀錄，請點選「新增評核表」開始填寫。</div>`}
+    </div>`;
+}
+
+function renderTeacherForm() {
+  const itemRows = ITEMS.map((it, i) => `
+    <tr>
+      <td class="item-name">${esc(it.text)}</td>
+      <td>${it.max}</td>
+      <td><input type="number" id="self_${i}" min="0" max="${it.max}" value=""
+           oninput="clampScore(this, ${it.max}); updateSelfTotal()"></td>
+    </tr>`).join('');
+  app.innerHTML = `
+    <span class="back-link" onclick="renderTeacherHome()">← 返回列表</span>
+    <div class="card">
+      <h2>一般醫學長期導師評核表（${PERIOD}）— 導師自評</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>姓名 <span class="req">*</span></label>
+          <input type="text" id="fName" placeholder="請輸入導師姓名">
+        </div>
+        <div class="form-group">
+          <label>單位 <span class="req">*</span></label>
+          <input type="text" id="fUnit" placeholder="請輸入所屬單位">
+        </div>
+      </div>
+      <div class="section-label">評量內容（自評）</div>
+      <table class="score-table">
+        <tr><th style="width:56%">評量內容</th><th>配分</th><th>自評得分</th></tr>
+        ${itemRows}
+        <tr class="total-row"><td class="item-name" style="text-align:center">總　積　分</td><td>100</td><td id="selfTotalCell">0</td></tr>
+      </table>
+      <div class="score-note">※ 各項得分不得超過配分上限。</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>導師簽名 <span class="req">*</span></label>
+          <input type="text" id="fSig" placeholder="請輸入姓名以代替簽名">
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input type="date" id="fDate" value="${todayStr()}">
+        </div>
+      </div>
+      <div class="actions-bar">
+        <button class="btn btn-outline" onclick="renderTeacherHome()">取消</button>
+        <button class="btn btn-primary" onclick="submitTeacherForm()">送出評核表 →</button>
+      </div>
+    </div>`;
+}
+
+function clampScore(input, max) {
+  if (input.value === '') return;
+  let v = Number(input.value);
+  if (isNaN(v) || v < 0) v = 0;
+  if (v > max) v = max;
+  input.value = v;
+}
+function updateSelfTotal() {
+  const scores = ITEMS.map((_, i) => Number(document.getElementById('self_' + i).value) || 0);
+  document.getElementById('selfTotalCell').textContent = sum(scores);
+}
+
+function submitTeacherForm() {
+  const name = document.getElementById('fName').value.trim();
+  const unit = document.getElementById('fUnit').value.trim();
+  const sig  = document.getElementById('fSig').value.trim();
+  const date = document.getElementById('fDate').value || todayStr();
+  const scores = ITEMS.map((_, i) => document.getElementById('self_' + i).value);
+  if (!name || !unit) return toast('⚠️ 請填寫姓名與單位');
+  if (scores.some(s => s === '')) return toast('⚠️ 請完成所有自評項目');
+  if (!sig) return toast('⚠️ 請輸入導師簽名');
+  const rec = {
+    id: 'r' + Date.now(),
+    period: PERIOD, name, unit,
+    selfScores: scores.map(Number), selfTotal: sum(scores),
+    chiefScores: null, chiefTotal: null, chiefFeedback: '',
+    deanScores: null, deanTotal: null, deanFeedback: '',
+    satisfaction: null,
+    sigs: { teacher: { name: sig, date }, chief: null, dean: null },
+    status: 'pending_chief',
+    submittedAt: todayStr(),
+  };
+  upsert(rec);
+  toast('✅ 已送出，將由一般科主任進行評核');
+  renderTeacherHome();
+}
+
+/* ═══════════════ 主任 / 部長：待辦清單 ═══════════════ */
+function renderReviewList(role) {
+  const pendingStatus = role === 'chief' ? 'pending_chief' : 'pending_dean';
+  const list = loadAll();
+  const pending = list.filter(r => r.status === pendingStatus);
+  const others  = list.filter(r => r.status !== pendingStatus);
+  const row = (r, actionable) => `
+    <tr>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.unit)}</td>
+      <td>${r.selfTotal} / 100</td>
+      <td>${statusTag(r.status)}</td>
+      <td>
+        ${actionable
+          ? `<button class="btn btn-primary btn-sm" onclick="renderReviewForm('${r.id}','${role}')">進行評核</button>`
+          : `<button class="btn btn-outline btn-sm" onclick="renderDetail('${r.id}')">檢視</button>`}
+      </td>
+    </tr>`;
+  app.innerHTML = `
+    <div class="card">
+      <h2>🔔 待評核（${ROLE_LABEL[role]}）</h2>
+      ${pending.length ? `
+        <table class="list-table">
+          <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th></th></tr>
+          ${pending.map(r => row(r, true)).join('')}
+        </table>` : `<div class="empty-hint">目前沒有待評核的表單。</div>`}
+    </div>
+    <div class="card">
+      <h2>🗂️ 其他評核表</h2>
+      ${others.length ? `
+        <table class="list-table">
+          <tr><th>導師姓名</th><th>單位</th><th>自評總分</th><th>狀態</th><th></th></tr>
+          ${others.map(r => row(r, false)).join('')}
+        </table>` : `<div class="empty-hint">尚無其他紀錄。</div>`}
+    </div>`;
+}
+
+/* ═══════════════ 主任 / 部長：評核表單 ═══════════════ */
+function renderReviewForm(id, role) {
+  const r = getRec(id);
+  if (!r) return;
+  const isChief = role === 'chief';
+  const colLabel = isChief ? '一般科主任評分' : '教學部部長評分';
+  const itemRows = ITEMS.map((it, i) => `
+    <tr>
+      <td class="item-name">${esc(it.text)}</td>
+      <td>${it.max}</td>
+      <td class="readonly-score">${r.selfScores[i]}</td>
+      ${isChief ? '' : `<td class="readonly-score">${r.chiefScores[i]}</td>`}
+      <td><input type="number" id="rev_${i}" min="0" max="${it.max}" value=""
+           oninput="clampScore(this, ${it.max}); updateRevTotal()"></td>
+    </tr>`).join('');
+  app.innerHTML = `
+    <span class="back-link" onclick="renderReviewList('${role}')">← 返回待辦清單</span>
+    <div class="card">
+      <h2>評核作業 — ${colLabel}</h2>
+      <div class="info-strip">
+        <div><b>期別：</b>${PERIOD}</div>
+        <div><b>導師：</b>${esc(r.name)}</div>
+        <div><b>單位：</b>${esc(r.unit)}</div>
+        <div><b>導師送出日期：</b>${esc(r.submittedAt)}</div>
+      </div>
+      <table class="score-table">
+        <tr>
+          <th style="width:44%">評量內容</th><th>配分</th><th>自評得分</th>
+          ${isChief ? '' : '<th>一般科主任評分</th>'}
+          <th>${colLabel}</th>
+        </tr>
+        ${itemRows}
+        <tr class="total-row">
+          <td class="item-name" style="text-align:center">總　積　分</td>
+          <td>100</td><td>${r.selfTotal}</td>
+          ${isChief ? '' : `<td>${r.chiefTotal}</td>`}
+          <td id="revTotalCell">0</td>
+        </tr>
+      </table>
+      <div class="score-note">※ 各項得分不得超過配分上限。</div>
+      ${isChief ? '' : `
+        <div class="section-label">一般科主任回饋（前一關）</div>
+        <div class="feedback-box">${esc(r.chiefFeedback) || '（無）'}</div>`}
+      <div class="section-label">回饋（${ROLE_LABEL[role]}）<span class="req">*</span></div>
+      <div class="form-group">
+        <textarea id="revFeedback" placeholder="請填寫對導師之回饋建議"></textarea>
+      </div>
+      ${isChief ? '' : `
+        <div class="form-row" style="margin-top:14px">
+          <div class="form-group">
+            <label>學員對導師滿意度（1－5 分） <span class="req">*</span></label>
+            <select id="satisfaction">
+              <option value="">請選擇</option>
+              <option value="5">5 分（非常滿意）</option>
+              <option value="4">4 分（滿意）</option>
+              <option value="3">3 分（普通）</option>
+              <option value="2">2 分（不滿意）</option>
+              <option value="1">1 分（非常不滿意）</option>
+            </select>
+          </div>
+        </div>`}
+      <div class="form-row" style="margin-top:14px">
+        <div class="form-group">
+          <label>${ROLE_LABEL[role]}簽名 <span class="req">*</span></label>
+          <input type="text" id="revSig" placeholder="請輸入姓名以代替簽名">
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input type="date" id="revDate" value="${todayStr()}">
+        </div>
+      </div>
+      <div class="actions-bar">
+        <button class="btn btn-outline" onclick="renderReviewList('${role}')">取消</button>
+        <button class="btn btn-primary" onclick="submitReview('${id}','${role}')">
+          ${isChief ? '完成評核，送交教學部部長 →' : '完成最終評核，結案 ✔'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function updateRevTotal() {
+  const scores = ITEMS.map((_, i) => Number(document.getElementById('rev_' + i).value) || 0);
+  document.getElementById('revTotalCell').textContent = sum(scores);
+}
+
+function submitReview(id, role) {
+  const r = getRec(id);
+  if (!r) return;
+  const scores = ITEMS.map((_, i) => document.getElementById('rev_' + i).value);
+  const feedback = document.getElementById('revFeedback').value.trim();
+  const sig = document.getElementById('revSig').value.trim();
+  const date = document.getElementById('revDate').value || todayStr();
+  if (scores.some(s => s === '')) return toast('⚠️ 請完成所有評分項目');
+  if (!feedback) return toast('⚠️ 請填寫回饋');
+  if (!sig) return toast('⚠️ 請輸入簽名');
+  if (role === 'chief') {
+    r.chiefScores = scores.map(Number);
+    r.chiefTotal = sum(scores);
+    r.chiefFeedback = feedback;
+    r.sigs.chief = { name: sig, date };
+    r.status = 'pending_dean';
+    upsert(r);
+    toast('✅ 已完成主任評核，送交教學部部長');
+  } else {
+    const sat = document.getElementById('satisfaction').value;
+    if (!sat) return toast('⚠️ 請選擇學員對導師滿意度');
+    r.deanScores = scores.map(Number);
+    r.deanTotal = sum(scores);
+    r.deanFeedback = feedback;
+    r.satisfaction = Number(sat);
+    r.sigs.dean = { name: sig, date };
+    r.status = 'completed';
+    upsert(r);
+    toast('✅ 評核流程已全部完成');
+  }
+  renderReviewList(role);
+}
+
+/* ═══════════════ 檢視 / 列印完整表單 ═══════════════ */
+function renderDetail(id) {
+  const r = getRec(id);
+  if (!r) return;
+  const cell = v => (v === null || v === undefined) ? '' : v;
+  const itemRows = ITEMS.map((it, i) => `
+    <tr>
+      <td style="text-align:left">${esc(it.text)}</td>
+      <td style="text-align:center">${it.max}</td>
+      <td style="text-align:center">${cell(r.selfScores?.[i])}</td>
+      <td style="text-align:center">${cell(r.chiefScores?.[i])}</td>
+      <td style="text-align:center">${cell(r.deanScores?.[i])}</td>
+    </tr>`).join('');
+  const sig = (s) => s ? `${esc(s.name)}　　日期：${esc(s.date)}` : '＿＿＿＿＿＿　　日期：＿＿＿＿＿＿';
+  const backFn = currentRole === 'teacher' ? "renderTeacherHome()"
+               : currentRole ? `renderReviewList('${currentRole}')` : 'renderRoleSelect()';
+  app.innerHTML = `
+    <span class="back-link no-print" onclick="${backFn}">← 返回</span>
+    <div class="card no-print" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>目前狀態：${statusTag(r.status)}</div>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ 列印 / 另存 PDF</button>
+    </div>
+    <div class="print-sheet">
+      <div class="hosp">
+        <div class="zh">奇美醫療財團法人奇美醫院</div>
+        <div class="en">Chi Mei Medical Center</div>
+      </div>
+      <div class="form-title">${PERIOD} 一般醫學長期導師評核表</div>
+      <table>
+        <tr>
+          <th style="width:12%">姓名</th><td style="width:38%">${esc(r.name)}</td>
+          <th style="width:12%">單位</th><td>${esc(r.unit)}</td>
+        </tr>
+      </table>
+      <table style="border-top:none">
+        <tr>
+          <th style="width:40%">評量內容</th><th>配分</th><th>自評得分</th>
+          <th>一般科主任評分</th><th>教學部部長評分</th>
+        </tr>
+        ${itemRows}
+        <tr>
+          <th>總　積　分</th>
+          <td style="text-align:center;font-weight:700">100</td>
+          <td style="text-align:center;font-weight:700">${cell(r.selfTotal)}</td>
+          <td style="text-align:center;font-weight:700">${cell(r.chiefTotal)}</td>
+          <td style="text-align:center;font-weight:700">${cell(r.deanTotal)}</td>
+        </tr>
+        <tr>
+          <th rowspan="2">回饋</th>
+          <th colspan="1">一般科主任</th>
+          <td colspan="3" style="text-align:left;white-space:pre-wrap">${esc(r.chiefFeedback)}</td>
+        </tr>
+        <tr>
+          <th colspan="1">教學部部長</th>
+          <td colspan="3" style="text-align:left;white-space:pre-wrap">${esc(r.deanFeedback)}</td>
+        </tr>
+        <tr>
+          <th>學員對導師滿意度</th>
+          <td colspan="4" style="text-align:left">滿意度分數 1－5 分：<b>${cell(r.satisfaction)}</b>${r.satisfaction ? ' 分' : ''}</td>
+        </tr>
+      </table>
+      <div class="sig-block">
+        <div>導　師　簽　名：${sig(r.sigs.teacher)}</div>
+        <div>一般科主任簽名：${sig(r.sigs.chief)}</div>
+        <div>教學部部長簽名：${sig(r.sigs.dean)}</div>
+      </div>
+    </div>`;
+}
+
+/* ═══════════════ 啟動 ═══════════════ */
+renderRoleSelect();
+</script>
+</body>
+</html>
