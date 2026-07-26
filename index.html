@@ -248,15 +248,13 @@
   .ps-main td.item { text-align: justify; line-height: 1.6; padding: 7px 5px; }
   .ps-main td.wide { text-align: left; white-space: pre-wrap; }
   .ps-main th.sat { white-space: nowrap; padding: 5px 4px; }
+  .ps-main th.total { font-weight: 400; }
   .ps-main .sub { font-size: 9pt; font-weight: 400; display: block; }
 
   /* 簽名區 */
   .ps-sig { padding: 34px 18px 22px; font-size: 13pt; line-height: 3.4; }
-  .ps-sig .line {
-    display: inline-block; min-width: 165px; border-bottom: 1pt solid #000;
-    text-align: center; margin: 0 4px;
-  }
-  .ps-sig .dline { display: inline-block; min-width: 130px; border-bottom: 1pt solid #000; text-align: center; }
+  .ps-sig .line { display: inline-block; min-width: 165px; text-align: center; margin: 0 4px; }
+  .ps-sig .dline { display: inline-block; min-width: 130px; text-align: center; }
 
   /* 邊界設為 0，瀏覽器就不會在紙上加印日期／網址／頁碼，改由表單自行留白 */
   @page { size: A4 portrait; margin: 0; }
@@ -911,11 +909,11 @@ function renderDetail(id) {
             </tr>
             ${itemRows}
             <tr>
-              <th colspan="2">總　積　分</th>
-              <td style="font-weight:700">100</td>
-              <td style="font-weight:700">${cell(r.selfTotal)}</td>
-              <td style="font-weight:700">${cell(r.chiefTotal)}</td>
-              <td style="font-weight:700">${cell(r.deanTotal)}</td>
+              <th colspan="2" class="total">總　積　分</th>
+              <td>100</td>
+              <td>${cell(r.selfTotal)}</td>
+              <td>${cell(r.chiefTotal)}</td>
+              <td>${cell(r.deanTotal)}</td>
             </tr>
             <tr>
               <th rowspan="3">回饋</th>
