@@ -213,30 +213,47 @@
   .back-link { color: var(--primary); cursor: pointer; font-size: 14px; margin-bottom: 14px; display: inline-block; }
   .back-link:hover { text-decoration: underline; }
 
-  /* ── 列印表單 ── */
+  /* ── 列印表單（比照原紙本範本：標楷體、院徽置中）── */
   .print-sheet {
     background: #fff; border: 1px solid var(--card-border); border-radius: 16px;
     padding: 40px 46px; box-shadow: var(--glass-shadow);
+    font-family: "標楷體", "DFKai-SB", "BiauKai", "Kaiti TC", "楷体", serif;
+    color: #000;
   }
-  .print-sheet .hosp { text-align: center; line-height: 1.5; margin-bottom: 4px; }
-  .print-sheet .hosp .zh { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
-  .print-sheet .hosp .en { font-size: 13px; color: #555; }
-  .print-sheet .form-title { text-align: center; font-size: 17px; font-weight: 700; margin: 10px 0 18px; letter-spacing: 1px; }
+  .print-sheet .hosp { text-align: center; line-height: 1.4; margin-bottom: 2px; }
+  .print-sheet .hosp .logo { display: block; height: 68px; margin: 0 auto 8px; }
+  .print-sheet .hosp .zh {
+    font-size: 24pt; font-weight: 700;
+    max-width: 15em; margin: 0 auto;
+    text-align: justify; text-align-last: justify;
+  }
+  .print-sheet .hosp .en {
+    font-size: 18pt; max-width: 15em; margin: 0 auto;
+    text-align: justify; text-align-last: justify;
+  }
+  .print-sheet .form-title { text-align: center; font-size: 16pt; font-weight: 700; margin: 18px 0 14px; }
   .print-sheet table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  .print-sheet table th, .print-sheet table td { border: 1px solid #444; padding: 9px 10px; font-size: 14px; }
-  .print-sheet table th { background: #f2f2f2; text-align: center; }
-  .print-sheet .sig-block { margin-top: 26px; font-size: 14.5px; line-height: 2.4; }
+  .print-sheet table th, .print-sheet table td { border: 1px solid #000; padding: 9px 10px; font-size: 12pt; }
+  .print-sheet table th { background: #f2f2f2; text-align: center; font-weight: 700; }
+  .print-sheet .sig-block { margin-top: 28px; font-size: 12pt; line-height: 2.6; }
 
+  /* 邊界設為 0，瀏覽器就不會在紙上加印日期／網址／頁碼，改由表單自行留白 */
+  @page { size: A4 portrait; margin: 0; }
   @media print {
     body { background: #fff !important; }
     header.topbar, .no-print, .toast, .busy-overlay { display: none !important; }
-    main { max-width: none; padding: 0; }
-    .print-sheet { border: none; border-radius: 0; box-shadow: none; padding: 10px 6px; }
+    main { max-width: none; padding: 0; margin: 0; }
+    .print-sheet {
+      border: none; border-radius: 0; box-shadow: none;
+      padding: 16mm 18mm;
+    }
     .card, .print-sheet {
       background: #fff !important; backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
     }
     .card { border: none; box-shadow: none; padding: 0; }
+    .print-sheet table { page-break-inside: avoid; }
+    .print-sheet .sig-block { page-break-inside: avoid; }
   }
 </style>
 </head>
@@ -842,6 +859,7 @@ function renderDetail(id) {
     </div>
     <div class="print-sheet">
       <div class="hosp">
+        <img class="logo" src="logo.png" alt="奇美醫院院徽">
         <div class="zh">奇美醫療財團法人奇美醫院</div>
         <div class="en">Chi Mei Medical Center</div>
       </div>
@@ -867,11 +885,11 @@ function renderDetail(id) {
         </tr>
         <tr>
           <th rowspan="2">回饋</th>
-          <th colspan="1">一般科主任</th>
+          <th colspan="1" style="white-space:nowrap">一般科主任</th>
           <td colspan="3" style="text-align:left;white-space:pre-wrap">${esc(r.chiefFeedback)}</td>
         </tr>
         <tr>
-          <th colspan="1">教學部部長</th>
+          <th colspan="1" style="white-space:nowrap">教學部部長</th>
           <td colspan="3" style="text-align:left;white-space:pre-wrap">${esc(r.deanFeedback)}</td>
         </tr>
         <tr>
