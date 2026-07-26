@@ -398,7 +398,12 @@ async function persist(rec) {
     RECORDS = list;
   }
 }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+/* 一律以台北時間計算日期；toISOString() 取的是 UTC，午夜到早上 8 點會少一天 */
+function todayStr() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
 function sum(arr)   { return arr.reduce((a, b) => a + (Number(b) || 0), 0); }
 
 /* ═══════════════ 共用 UI ═══════════════ */
