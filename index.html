@@ -213,29 +213,50 @@
   .back-link { color: var(--primary); cursor: pointer; font-size: 14px; margin-bottom: 14px; display: inline-block; }
   .back-link:hover { text-decoration: underline; }
 
-  /* ── 列印表單（比照原紙本範本：標楷體、院徽置中）── */
+  /* ── 列印表單（完全比照原紙本範本）──
+     中文標楷體、英數 Times New Roman：Times 無中文字符，會自動回退到標楷體 */
   .print-sheet {
     background: #fff; border: 1px solid var(--card-border); border-radius: 16px;
-    padding: 40px 46px; box-shadow: var(--glass-shadow);
-    font-family: "標楷體", "DFKai-SB", "BiauKai", "Kaiti TC", "楷体", serif;
+    padding: 26px; box-shadow: var(--glass-shadow);
+    font-family: "Times New Roman", "標楷體", "DFKai-SB", "BiauKai", "Kaiti TC", serif;
     color: #000;
   }
-  .print-sheet .hosp { text-align: center; line-height: 1.4; margin-bottom: 2px; }
-  .print-sheet .hosp .logo { display: block; height: 68px; margin: 0 auto 8px; }
-  .print-sheet .hosp .zh {
-    font-size: 24pt; font-weight: 700;
-    max-width: 15em; margin: 0 auto;
-    text-align: justify; text-align-last: justify;
+  /* 整頁外框；螢幕上固定為 A4 可列印寬度，預覽即所見即所得 */
+  .print-sheet { overflow-x: auto; }
+  .ps-frame { border: 1.4pt solid #000; width: 174mm; margin: 0 auto; min-height: 256mm; }
+  .ps-frame table { width: 100%; border-collapse: collapse; }
+  .ps-frame td, .ps-frame th { border: 1pt solid #000; font-size: 12pt; padding: 5px 8px; }
+  /* 頂端三列的左右邊框由外框提供，避免雙線 */
+  .ps-frame > table tr > *:first-child { border-left: none; }
+  .ps-frame > table tr > *:last-child { border-right: none; }
+  .ps-frame > table:first-child tr > * { border-top: none; }
+
+  /* 頁首：院徽置左，院名置中 */
+  .ps-head td { border: none; border-bottom: 1pt solid #000; padding: 8px 10px; text-align: center; }
+  .ps-head .logo { height: 54px; vertical-align: middle; }
+  .ps-head .names { display: inline-block; vertical-align: middle; margin-left: 12px; text-align: center; }
+  .ps-head .zh { display: block; font-size: 22pt; font-weight: 700; letter-spacing: 2px; line-height: 1.3; }
+  .ps-head .en { display: block; font-size: 15pt; font-weight: 700; letter-spacing: 4px; line-height: 1.25; }
+  .ps-title { text-align: center; font-size: 15pt; font-weight: 700; letter-spacing: 1px; }
+  .ps-name .lbl { text-align: center; font-weight: 700; width: 18%; }
+  .ps-name .val { width: 32%; }
+
+  /* 中段主表 */
+  .ps-body { padding: 14px 8px 0; }
+  .ps-main th { text-align: center; font-weight: 700; }
+  .ps-main td { text-align: center; }
+  .ps-main td.item { text-align: justify; line-height: 1.6; padding: 7px 5px; }
+  .ps-main td.wide { text-align: left; white-space: pre-wrap; }
+  .ps-main th.sat { white-space: nowrap; padding: 5px 4px; }
+  .ps-main .sub { font-size: 9pt; font-weight: 400; display: block; }
+
+  /* 簽名區 */
+  .ps-sig { padding: 34px 18px 22px; font-size: 13pt; line-height: 3.4; }
+  .ps-sig .line {
+    display: inline-block; min-width: 165px; border-bottom: 1pt solid #000;
+    text-align: center; margin: 0 4px;
   }
-  .print-sheet .hosp .en {
-    font-size: 18pt; max-width: 15em; margin: 0 auto;
-    text-align: justify; text-align-last: justify;
-  }
-  .print-sheet .form-title { text-align: center; font-size: 16pt; font-weight: 700; margin: 18px 0 14px; }
-  .print-sheet table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  .print-sheet table th, .print-sheet table td { border: 1px solid #000; padding: 9px 10px; font-size: 12pt; }
-  .print-sheet table th { background: #f2f2f2; text-align: center; font-weight: 700; }
-  .print-sheet .sig-block { margin-top: 28px; font-size: 12pt; line-height: 2.6; }
+  .ps-sig .dline { display: inline-block; min-width: 130px; border-bottom: 1pt solid #000; text-align: center; }
 
   /* 邊界設為 0，瀏覽器就不會在紙上加印日期／網址／頁碼，改由表單自行留白 */
   @page { size: A4 portrait; margin: 0; }
@@ -309,7 +330,7 @@ const TEACHERS = {
 };
 
 /* ── 主管密碼（僅單機測試模式使用；Google Sheets 模式由 Apps Script 驗證）── */
-const ROLE_PASSWORDS = { chief: '940963', dean: '010101' };
+const ROLE_PASSWORDS = { chief: '940963', dean: '900677' };
 
 /* ── 主管簽名（送出時自動帶入，日期為當天）── */
 const ROLE_SIGNERS = { chief: '郭妍伶', dean: '蘇慧真' };
@@ -839,13 +860,14 @@ function renderDetail(id) {
   const cell = v => (v === null || v === undefined) ? '' : v;
   const itemRows = ITEMS.map((it, i) => `
     <tr>
-      <td style="text-align:left">${esc(it.text)}</td>
-      <td style="text-align:center">${it.max}</td>
-      <td style="text-align:center">${cell(r.selfScores?.[i])}</td>
-      <td style="text-align:center">${cell(r.chiefScores?.[i])}</td>
-      <td style="text-align:center">${cell(r.deanScores?.[i])}</td>
+      <td colspan="2" class="item">${esc(it.text)}</td>
+      <td>${it.max}</td>
+      <td>${cell(r.selfScores?.[i])}</td>
+      <td>${cell(r.chiefScores?.[i])}</td>
+      <td>${cell(r.deanScores?.[i])}</td>
     </tr>`).join('');
-  const sig = (s) => s ? `${esc(s.name)}　　日期：${esc(s.date)}` : '＿＿＿＿＿＿　　日期：＿＿＿＿＿＿';
+  const sig = (s) =>
+    `<span class="line">${s ? esc(s.name) : ''}</span>日期：<span class="dline">${s ? esc(s.date) : ''}</span>`;
   const backFn = currentRole === 'teacher' ? "renderTeacherHome()"
                : currentRole ? `renderReviewList('${currentRole}')` : 'renderRoleSelect()';
   app.innerHTML = `
@@ -858,49 +880,63 @@ function renderDetail(id) {
       ${currentRole === 'teacher' ? '' : docStrip(r.meetingLink)}
     </div>
     <div class="print-sheet">
-      <div class="hosp">
-        <img class="logo" src="logo.png" alt="奇美醫院院徽">
-        <div class="zh">奇美醫療財團法人奇美醫院</div>
-        <div class="en">Chi Mei Medical Center</div>
-      </div>
-      <div class="form-title">${PERIOD} 一般醫學長期導師評核表</div>
-      <table>
-        <tr>
-          <th style="width:12%">姓名</th><td style="width:38%">${esc(r.name)}</td>
-          <th style="width:12%">單位</th><td>${esc(r.unit)}</td>
-        </tr>
-      </table>
-      <table style="border-top:none">
-        <tr>
-          <th style="width:40%">評量內容</th><th>配分</th><th>自評得分</th>
-          <th>一般科主任評分</th><th>教學部部長評分</th>
-        </tr>
-        ${itemRows}
-        <tr>
-          <th>總　積　分</th>
-          <td style="text-align:center;font-weight:700">100</td>
-          <td style="text-align:center;font-weight:700">${cell(r.selfTotal)}</td>
-          <td style="text-align:center;font-weight:700">${cell(r.chiefTotal)}</td>
-          <td style="text-align:center;font-weight:700">${cell(r.deanTotal)}</td>
-        </tr>
-        <tr>
-          <th rowspan="2">回饋</th>
-          <th colspan="1" style="white-space:nowrap">一般科主任</th>
-          <td colspan="3" style="text-align:left;white-space:pre-wrap">${esc(r.chiefFeedback)}</td>
-        </tr>
-        <tr>
-          <th colspan="1" style="white-space:nowrap">教學部部長</th>
-          <td colspan="3" style="text-align:left;white-space:pre-wrap">${esc(r.deanFeedback)}</td>
-        </tr>
-        <tr>
-          <th>學員對導師滿意度</th>
-          <td colspan="4" style="text-align:left">滿意度分數 1－5 分：<b>${cell(r.satisfaction)}</b>${r.satisfaction ? ' 分' : ''}</td>
-        </tr>
-      </table>
-      <div class="sig-block">
-        <div>導　師　簽　名：${sig(r.sigs.teacher)}</div>
-        <div>一般科主任簽名：${sig(r.sigs.chief)}</div>
-        <div>教學部部長簽名：${sig(r.sigs.dean)}</div>
+      <div class="ps-frame">
+        <table class="ps-head">
+          <tr><td>
+            <img class="logo" src="logo.png" alt="奇美醫院院徽">
+            <span class="names">
+              <span class="zh">奇美醫療財團法人奇美醫院</span>
+              <span class="en">Chi Mei Medical Center</span>
+            </span>
+          </td></tr>
+        </table>
+        <table>
+          <tr><td class="ps-title">${PERIOD} 一般醫學長期導師評核表</td></tr>
+        </table>
+        <table class="ps-name">
+          <tr>
+            <td class="lbl">姓名</td><td class="val">${esc(r.name)}</td>
+            <td class="lbl">單位</td><td class="val">${esc(r.unit)}</td>
+          </tr>
+        </table>
+        <div class="ps-body">
+          <table class="ps-main">
+            <colgroup>
+              <col style="width:10%"><col style="width:24%"><col style="width:8%">
+              <col style="width:13%"><col style="width:21%"><col style="width:24%">
+            </colgroup>
+            <tr>
+              <th colspan="2">評量內容</th><th>配分</th><th>自評得分</th>
+              <th>一般科主任評分</th><th>教學部部長評分</th>
+            </tr>
+            ${itemRows}
+            <tr>
+              <th colspan="2">總　積　分</th>
+              <td style="font-weight:700">100</td>
+              <td style="font-weight:700">${cell(r.selfTotal)}</td>
+              <td style="font-weight:700">${cell(r.chiefTotal)}</td>
+              <td style="font-weight:700">${cell(r.deanTotal)}</td>
+            </tr>
+            <tr>
+              <th rowspan="3">回饋</th>
+              <th>一般科主任</th>
+              <td colspan="4" class="wide">${esc(r.chiefFeedback)}</td>
+            </tr>
+            <tr>
+              <th>教學部部長</th>
+              <td colspan="4" class="wide">${esc(r.deanFeedback)}</td>
+            </tr>
+            <tr>
+              <th class="sat">學員對導師滿意度<span class="sub">滿意度分數 1-5 分</span></th>
+              <td colspan="4" class="wide">${cell(r.satisfaction)}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="ps-sig">
+          <div>導　師　簽　名：${sig(r.sigs.teacher)}</div>
+          <div>一般科主任簽名：${sig(r.sigs.chief)}</div>
+          <div>教學部部長簽名：${sig(r.sigs.dean)}</div>
+        </div>
       </div>
     </div>`;
 }

@@ -8,7 +8,7 @@
  */
 
 /* ── 設定：登入密碼與自動簽名人。修改後需「部署 → 管理部署作業 → 編輯 → 新版本」才會生效 ── */
-var PASSWORDS = { chief: '940963', dean: '010101' };
+var PASSWORDS = { chief: '940963', dean: '900677' };
 var SIGNERS   = { chief: '郭妍伶', dean: '蘇慧真' };
 
 /* ── 導師座談記錄單所在的 Google 雲端硬碟資料夾 ID ──
