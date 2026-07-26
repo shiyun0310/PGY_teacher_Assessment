@@ -116,7 +116,6 @@
     border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; font-size: 14.5px;
   }
   .doc-strip .label { font-weight: 700; color: var(--primary-dark); }
-  .doc-strip .none { color: var(--muted); }
 
   /* ── 表單 ── */
   .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -468,12 +467,11 @@ function logout() {
 /* 導師座談記錄單（僅一般科主任與教學部部長可調閱，導師端不顯示） */
 function docStrip(link) {
   const safe = /^https?:\/\//i.test(link || '') ? link : '';
+  if (!safe) return '';   /* 查無記錄單時整段隱藏，不顯示提示文字 */
   return `
     <div class="doc-strip no-print">
       <span class="label">${icon('doc', 17)}${PERIOD} 導師座談記錄單</span>
-      ${safe
-        ? `<a class="btn btn-outline btn-sm" href="${esc(safe)}" target="_blank" rel="noopener">開啟記錄單</a>`
-        : `<span class="none">（尚未上傳，請洽教學部）</span>`}
+      <a class="btn btn-outline btn-sm" href="${esc(safe)}" target="_blank" rel="noopener">開啟記錄單</a>
     </div>`;
 }
 
