@@ -7,8 +7,11 @@
  *   assessments — 評核紀錄（由系統自動寫入，請勿變動欄位順序）
  */
 
-/* ── 設定：登入密碼與自動簽名人。修改後需「部署 → 管理部署作業 → 編輯 → 新版本」才會生效 ── */
-var PASSWORDS = { chief: '940963', dean: '900677' };
+/* ── 設定：登入密碼與自動簽名人。修改後需「部署 → 管理部署作業 → 編輯 → 新版本」才會生效 ──
+   admin＝教學部行政人員，僅用於登錄學員對導師滿意度，不參與簽名。
+   下方為佔位字串：本檔案位於公開 repo，請在 Apps Script 編輯器中改成實際密碼後再部署，
+   且不要把實際密碼提交回 repo。 */
+var PASSWORDS = { admin: '請設定', chief: '請設定', dean: '請設定' };
 var SIGNERS   = { chief: '郭妍伶', dean: '蘇慧真' };
 
 /* ── 導師座談記錄單所在的 Google 雲端硬碟資料夾 ID ──
@@ -27,6 +30,8 @@ var REC_HEADERS = [
   'dean1', 'dean2', 'dean3', 'dean4', 'dean_total', 'dean_feedback',
   'status', 'teacher_signed_at', 'chief_signed_at', 'dean_signed_at',
 ];
+/* 滿意度欄位位置（0 起算），供教學部行政人員單獨寫入 */
+var SAT_COL = REC_HEADERS.indexOf('satisfaction');
 /* 自動建立工作表時顯示的中文標題（僅供閱讀，順序需與 REC_HEADERS 一致） */
 var TEACHER_LABELS = ['姓名', '單位', '停用請填N', '人事號', '座談記錄單連結'];
 /* teachers 工作表欄位位置（0 起算） */
@@ -71,17 +76,27 @@ function handle(req) {
       lock.waitLock(10000);
       try { saveRecord(req.record); } finally { lock.releaseLock(); }
       return { ok: true, records: scopedRecords(req) };
+    case 'saveSatisfaction':
+      /* 學員對導師滿意度：僅教學部行政人員可登錄，且只會寫入滿意度欄位 */
+      if (req.role !== 'admin' || PASSWORDS.admin !== String(req.password)) {
+        return { error: '未授權的存取' };
+      }
+      var satLock = LockService.getScriptLock();
+      satLock.waitLock(10000);
+      try { saveSatisfaction(req.id, req.satisfaction); } finally { satLock.releaseLock(); }
+      return { ok: true, records: scopedRecords(req) };
     default:
       return { error: 'unknown action: ' + req.action };
   }
 }
 
 /* 依身分限定可讀取的資料：導師只拿得到自己那筆（且不含記錄單連結），
-   主管須通過密碼驗證，才能取得全部資料與座談記錄單連結 */
+   主管須通過密碼驗證，才能取得全部資料與座談記錄單連結；
+   教學部行政人員可取得全部資料，但不含座談記錄單連結 */
 function scopedRecords(req) {
-  if (req.role === 'chief' || req.role === 'dean') {
+  if (req.role === 'chief' || req.role === 'dean' || req.role === 'admin') {
     if (PASSWORDS[req.role] !== String(req.password)) throw new Error('密碼驗證失敗');
-    return getRecords(null, true);
+    return getRecords(null, req.role !== 'admin');
   }
   if (req.role === 'teacher' && req.name) return getRecords(String(req.name).trim(), false);
   return [];
@@ -251,12 +266,32 @@ function saveRecord(rec) {
     var ids = sh.getRange(2, 1, last - 1, 1).getValues();
     for (var i = 0; i < ids.length; i++) {
       if (String(ids[i][0]) === String(rec.id)) {
+        /* 滿意度由教學部行政人員另行登錄，主任／部長送出時不覆蓋既有分數 */
+        if (row[SAT_COL] === '') row[SAT_COL] = sh.getRange(i + 2, SAT_COL + 1).getValue();
         sh.getRange(i + 2, 1, 1, REC_HEADERS.length).setValues([row]);
         return;
       }
     }
   }
   sh.appendRow(row);
+}
+
+/* ── 教學部行政人員登錄學員對導師滿意度（只寫入滿意度欄位，不動其他資料）── */
+function saveSatisfaction(id, score) {
+  var n = Number(score);
+  if (!(n >= 1 && n <= 5)) throw new Error('滿意度分數需為 1 ~ 5');
+  var sh = getSheet(REC_SHEET, REC_LABELS);
+  var last = sh.getLastRow();
+  if (last > 1) {
+    var ids = sh.getRange(2, 1, last - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(id)) {
+        sh.getRange(i + 2, SAT_COL + 1).setValue(n);
+        return;
+      }
+    }
+  }
+  throw new Error('查無此評核紀錄');
 }
 
 function sigDate(rec, who) {

@@ -20,12 +20,14 @@
     --green: #2e7d54;
     --orange: #c07b1a;
     --blue: #2b5f8a;
+    --purple: #6b4a9e;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   /* 依身分切換整體配色（點選身分卡後套用） */
   /* 導師沿用預設酒紅品牌色，不另外覆寫 */
   body.theme-chief { --primary: #2b5f8a; --primary-dark: #204a6d; --primary-light: #e7eef5; }
   body.theme-dean  { --primary: #2e7d54; --primary-dark: #226141; --primary-light: #e6f3ec; }
+  body.theme-admin { --primary: #6b4a9e; --primary-dark: #543a7d; --primary-light: #efeaf7; }
   body {
     font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
     color: var(--text); min-height: 100vh; background: var(--bg);
@@ -74,6 +76,7 @@
   }
   .role-card.rc-chief { --rc: var(--blue); }
   .role-card.rc-dean { --rc: var(--green); }
+  .role-card.rc-admin { --rc: var(--purple); }
   .role-card:hover {
     transform: translateY(-5px); background: rgba(255,255,255,.86);
     box-shadow: 0 16px 40px rgba(31,38,80,.18), inset 0 1px 0 rgba(255,255,255,.85);
@@ -162,6 +165,14 @@
   }
   table.list-table th { color: var(--muted); font-weight: 600; font-size: 13px; }
   table.list-table tr:hover td { background: rgba(255,255,255,.65); }
+  table.list-table select {
+    padding: 7px 10px; border: 1px solid rgba(0,0,0,.12); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: rgba(255,255,255,.85); min-width: 150px;
+  }
+  table.list-table select:focus {
+    outline: none; border-color: var(--primary); background: #fff;
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
   .status-tag {
     display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
   }
@@ -310,12 +321,16 @@ const ITEMS = [
   { text: '3.當導生出現困難時是否積極幫忙輔導。', max: 25 },
   { text: '4.導生若有生活或學習困難是否主動告知教學部。', max: 20 },
 ];
+/* 學員對導師滿意度（由教學部行政人員登錄） */
+const SAT_LABEL = { 5: '非常滿意', 4: '滿意', 3: '普通', 2: '不滿意', 1: '非常不滿意' };
 const STATUS_LABEL = {
   pending_chief: '待一般科主任評核',
   pending_dean:  '待教學部部長評核',
   completed:     '已完成',
 };
-const ROLE_LABEL = { teacher: '導師', chief: '一般科主任', dean: '教學部部長' };
+const ROLE_LABEL = {
+  teacher: '導師', admin: '教學部行政人員', chief: '一般科主任', dean: '教學部部長',
+};
 
 /* ── 導師名單（僅單機測試模式使用；Google Sheets 模式改由 teachers 工作表維護）── */
 const TEACHERS = {
@@ -326,8 +341,9 @@ const TEACHERS = {
   '李國強': '急診醫學科',
 };
 
-/* ── 主管密碼（僅單機測試模式使用；Google Sheets 模式由 Apps Script 驗證）── */
-const ROLE_PASSWORDS = { chief: '940963', dean: '900677' };
+/* ── 主管密碼（僅單機測試模式使用；Google Sheets 模式由 Apps Script 驗證）──
+   正式使用的密碼一律只設定在 Apps Script 編輯器的 PASSWORDS，不寫在這裡 */
+const ROLE_PASSWORDS = { admin: 'test-admin', chief: 'test-chief', dean: 'test-dean' };
 
 /* ── 主管簽名（送出時自動帶入，日期為當天）── */
 const ROLE_SIGNERS = { chief: '郭妍伶', dean: '蘇慧真' };
@@ -425,6 +441,7 @@ function icon(name, size) {
     lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     printer: '<path d="M7 8V3h10v5"/><rect x="4" y="8" width="16" height="8" rx="1.5"/><path d="M7 13h10v8H7z"/>',
     doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
+    star: '<path d="m12 3.5 2.7 5.6 6 .9-4.35 4.3 1.03 6.2L12 17.6 6.62 20.5l1.03-6.2L3.3 10l6-.9z"/>',
   };
   return `<svg class="svg-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
@@ -481,12 +498,17 @@ function renderRoleSelect() {
   app.innerHTML = `
     <div class="role-select">
       <h2>請選擇您的身分</h2>
-      <p class="hint">依身分進入對應的評核流程：導師自評 → 一般科主任評核 → 教學部部長評核</p>
+      <p class="hint">依身分進入對應的評核流程：導師自評 → 一般科主任評核 → 教學部部長評核；學員對導師滿意度由教學部行政人員登錄</p>
       <div class="role-cards">
         <div class="role-card" onclick="enter('teacher')">
           <div class="icon">${icon('person', 42)}</div>
           <h3>導師</h3>
           <p>輸入人事號即自動帶出您的資料並進入自評表，送出後系統自動代簽。</p>
+        </div>
+        <div class="role-card rc-admin" onclick="enter('admin')">
+          <div class="icon">${icon('star', 42)}</div>
+          <h3>教學部行政人員</h3>
+          <p>輸入密碼登入後，為已自評的導師登錄學員滿意度分數（1－5 分）。</p>
         </div>
         <div class="role-card rc-chief" onclick="enter('chief')">
           <div class="icon">${icon('stethoscope', 42)}</div>
@@ -496,7 +518,7 @@ function renderRoleSelect() {
         <div class="role-card rc-dean" onclick="enter('dean')">
           <div class="icon">${icon('building', 42)}</div>
           <h3>教學部部長</h3>
-          <p>輸入密碼登入後，完成最終評分、回饋與學員滿意度登錄並結案。</p>
+          <p>輸入密碼登入後，檢視主任評分與學員滿意度，完成最終評分回饋並結案。</p>
         </div>
       </div>
     </div>`;
@@ -582,7 +604,8 @@ async function checkGate(role) {
     }
     currentPassword = pwd;
     setRole(role);
-    await renderReviewList(role);
+    if (role === 'admin') await renderAdminList();
+    else await renderReviewList(role);
   } catch (e) {
     toastErr('連線失敗，請稍後再試（' + e.message + '）');
   } finally {
@@ -693,6 +716,89 @@ async function submitTeacherForm() {
   }
 }
 
+/* ═══════════════ 教學部行政人員：登錄學員滿意度 ═══════════════ */
+function satOptions(selected) {
+  return [5, 4, 3, 2, 1].map(n =>
+    `<option value="${n}"${Number(selected) === n ? ' selected' : ''}>${n} 分（${SAT_LABEL[n]}）</option>`
+  ).join('');
+}
+function satText(v) { return v ? `${v} 分（${SAT_LABEL[v]}）` : ''; }
+
+async function renderAdminList() {
+  if (USE_API) {
+    setBusy(true);
+    try { await refreshRecords(); }
+    catch (e) { toastErr('讀取資料失敗（' + e.message + '）'); }
+    finally { setBusy(false); }
+  }
+  const list = loadAll();
+  const pending = list.filter(r => !r.satisfaction);
+  const done    = list.filter(r => r.satisfaction);
+  const row = r => `
+    <tr>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.unit)}</td>
+      <td>${statusTag(r.status)}</td>
+      <td>
+        <select id="sat_${r.id}">
+          <option value="">請選擇</option>
+          ${satOptions(r.satisfaction)}
+        </select>
+      </td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="saveSatisfaction('${r.id}')">儲存</button>
+        <button class="btn btn-outline btn-sm" onclick="renderDetail('${r.id}')">檢視</button>
+      </td>
+    </tr>`;
+  const head = '<tr><th>導師姓名</th><th>單位</th><th>狀態</th><th>學員對導師滿意度（1－5 分）</th><th></th></tr>';
+  app.innerHTML = `
+    <div class="card">
+      <h2>${icon('star', 18)}待登錄滿意度（${PERIOD}）</h2>
+      ${pending.length ? `
+        <table class="list-table">${head}${pending.map(row).join('')}</table>
+        <div class="score-note" style="margin-top:14px">※ 選擇分數後按「儲存」，可在主任、部長評核前後隨時登錄或修改。</div>`
+        : `<div class="empty-hint">目前沒有待登錄滿意度的導師。</div>`}
+    </div>
+    <div class="card">
+      <h2>${icon('folder', 18)}已登錄滿意度</h2>
+      ${done.length ? `
+        <table class="list-table">${head}${done.map(row).join('')}</table>`
+        : `<div class="empty-hint">尚無已登錄的紀錄。</div>`}
+    </div>`;
+}
+
+async function saveSatisfaction(id) {
+  const r = getRec(id);
+  if (!r) return;
+  const val = document.getElementById('sat_' + id).value;
+  if (!val) return toastErr('請選擇滿意度分數');
+  setBusy(true);
+  try {
+    if (USE_API) {
+      RECORDS = (await api(withAuth({ action: 'saveSatisfaction', id, satisfaction: Number(val) })))
+        .records.map(normalizeRecord);
+    } else {
+      const list = loadLocal();
+      const i = list.findIndex(x => x.id === id);
+      if (i >= 0) list[i].satisfaction = Number(val);
+      localStorage.setItem(STORE_KEY, JSON.stringify(list));
+      RECORDS = list;
+    }
+    toast(`已儲存 ${r.name} 的學員滿意度（${val} 分）`);
+    renderAdminList();
+  } catch (e) {
+    /* 紀錄已不在試算表（例如分頁開太久、資料列被刪除）時，重抓一次以免畫面停在舊資料 */
+    if (/查無此評核紀錄/.test(e.message)) {
+      toastErr('這筆資料已不存在，畫面已更新為最新清單');
+      setBusy(false);
+      return renderAdminList();
+    }
+    toastErr('儲存失敗，請稍後再試（' + e.message + '）');
+  } finally {
+    setBusy(false);
+  }
+}
+
 /* ═══════════════ 主任 / 部長：待辦清單 ═══════════════ */
 async function renderReviewList(role) {
   if (USE_API) {
@@ -779,27 +885,13 @@ function renderReviewForm(id, role) {
       <div class="score-note">※ 各項得分不得超過配分上限。</div>
       ${isChief ? '' : `
         <div class="section-label">一般科主任回饋</div>
-        <div class="feedback-box">${esc(r.chiefFeedback) || '（無）'}</div>
-        <div class="section-label">學員對導師滿意度（一般科主任填寫）</div>
-        <div class="feedback-box">${r.satisfaction ? r.satisfaction + ' 分' : '（無）'}</div>`}
+        <div class="feedback-box">${esc(r.chiefFeedback) || '（無）'}</div>`}
+      <div class="section-label">學員對導師滿意度（教學部行政人員登錄）</div>
+      <div class="feedback-box">${satText(r.satisfaction) || '（尚未登錄）'}</div>
       <div class="section-label">${ROLE_LABEL[role]}回饋 <span class="req">*</span></div>
       <div class="form-group">
         <textarea id="revFeedback" placeholder="請填寫對導師之回饋建議"></textarea>
       </div>
-      ${!isChief ? '' : `
-        <div class="form-row" style="margin-top:14px">
-          <div class="form-group">
-            <label>學員對導師滿意度（1－5 分） <span class="req">*</span></label>
-            <select id="satisfaction">
-              <option value="">請選擇</option>
-              <option value="5">5 分（非常滿意）</option>
-              <option value="4">4 分（滿意）</option>
-              <option value="3">3 分（普通）</option>
-              <option value="2">2 分（不滿意）</option>
-              <option value="1">1 分（非常不滿意）</option>
-            </select>
-          </div>
-        </div>`}
       <div class="score-note" style="margin-top:14px">
         ※ 送出後系統將自動簽名：${ROLE_LABEL[role]}「${ROLE_SIGNERS[role]}」，日期為 ${todayStr()}。
       </div>
@@ -827,12 +919,9 @@ async function submitReview(id, role) {
   if (scores.some(s => s === '')) return toastErr('請完成所有評分項目');
   if (!feedback) return toastErr('請填寫回饋');
   if (role === 'chief') {
-    const sat = document.getElementById('satisfaction').value;
-    if (!sat) return toastErr('請選擇學員對導師滿意度');
     r.chiefScores = scores.map(Number);
     r.chiefTotal = sum(scores);
     r.chiefFeedback = feedback;
-    r.satisfaction = Number(sat);
     r.sigs.chief = { name: sig, date };
     r.status = 'pending_dean';
   } else {
@@ -869,7 +958,8 @@ function renderDetail(id) {
     </tr>`).join('');
   const sig = (s) =>
     `<span class="line">${s ? esc(s.name) : ''}</span>日期：<span class="dline">${s ? esc(s.date) : ''}</span>`;
-  const backFn = currentRole === 'teacher' ? "renderTeacherHome()"
+  const backFn = currentRole === 'teacher' ? 'renderTeacherHome()'
+               : currentRole === 'admin' ? 'renderAdminList()'
                : currentRole ? `renderReviewList('${currentRole}')` : 'renderRoleSelect()';
   app.innerHTML = `
     <span class="back-link no-print" onclick="${backFn}">← 返回</span>
@@ -878,7 +968,7 @@ function renderDetail(id) {
         <div>目前狀態：${statusTag(r.status)}</div>
         <button class="btn btn-primary" onclick="window.print()">${icon('printer', 16)} 列印 / 另存 PDF</button>
       </div>
-      ${currentRole === 'teacher' ? '' : docStrip(r.meetingLink)}
+      ${(currentRole === 'chief' || currentRole === 'dean') ? docStrip(r.meetingLink) : ''}
     </div>
     <div class="print-sheet">
       <div class="ps-frame">
